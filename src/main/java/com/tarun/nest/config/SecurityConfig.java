@@ -20,12 +20,25 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
+                // Allow unauthenticated access to auth endpoints and swagger/openapi resources
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                .requestMatchers(
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/v3/api-docs",
+                        "/swagger-resources/**",
+                        "/webjars/**"
+                ).permitAll()
                 .anyRequest().authenticated()
-            )
-            .httpBasic(basic -> {});
-        
+            );
+
+        // NOTE: Do not enable HTTP Basic authentication here. Disabling httpBasic
+        // prevents the browser from showing the basic auth popup when an endpoint
+        // returns 401. Authentication is expected to be handled using JWT tokens
+        // (see AuthService / JwtUtil). If you later need a custom auth entry point
+        // or JWT filter, add it here.
+
         return http.build();
     }
 }
