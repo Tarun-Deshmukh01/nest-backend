@@ -9,7 +9,6 @@ import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.util.JwtUtil;
 import com.tarun.nest.enums.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,9 +16,6 @@ public class AuthService {
     
     @Autowired
     private UserRepository userRepository;
-    
-    @Autowired
-    private PasswordEncoder passwordEncoder;
     
     @Autowired
     private JwtUtil jwtUtil;
@@ -34,7 +30,7 @@ public class AuthService {
             throw new RuntimeException("User account is inactive");
         }
         
-        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+        if (!loginRequest.getPassword().equals(user.getPassword())) {
             throw new RuntimeException("Invalid password");
         }
         
@@ -45,8 +41,7 @@ public class AuthService {
         response.setMessage("Login successful");
         response.setUserId(user.getId());
         response.setEmail(user.getEmail());
-        response.setFirstName(user.getFirstName());
-        response.setLastName(user.getLastName());
+        response.setName(user.getName());
         
         return response;
     }
@@ -62,23 +57,25 @@ public class AuthService {
             throw new RuntimeException("Invalid security code. Security code should be 1234");
         }
         
-        // Check if username exists
-        if (userRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already exists");
-        }
-        
         // Check if email exists
         if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
         }
         
+        // Generate username from email (or use a UUID for uniqueness)
+        String username = registerRequest.getEmail().split("@")[0] + "_" + System.currentTimeMillis();
+        
+        // Check if username exists (though we're generating it to be unique)
+        if (userRepository.findByUsername(username).isPresent()) {
+            throw new RuntimeException("Username already exists");
+        }
+        
         // Create new user
         User user = new User();
-        user.setUsername(registerRequest.getUsername());
+        user.setUsername(username);
         user.setEmail(registerRequest.getEmail());
-        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-        user.setFirstName(registerRequest.getFirstName());
-        user.setLastName(registerRequest.getLastName());
+        user.setPassword(registerRequest.getPassword());
+        user.setName(registerRequest.getName());
         user.setSecurityCode(registerRequest.getSecurityCode());
         user.setRole(registerRequest.getRole() != null ? registerRequest.getRole() : UserRole.CUSTOMER);
         user.setActive(true);
@@ -89,10 +86,8 @@ public class AuthService {
         response.setMessage("Registration successful");
         response.setSuccess(true);
         response.setUserId(savedUser.getId());
-        response.setUsername(savedUser.getUsername());
+        response.setName(savedUser.getName());
         response.setEmail(savedUser.getEmail());
-        response.setFirstName(savedUser.getFirstName());
-        response.setLastName(savedUser.getLastName());
         response.setRole(savedUser.getRole());
         
         return response;
