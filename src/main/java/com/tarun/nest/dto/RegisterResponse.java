@@ -1,21 +1,64 @@
 package com.tarun.nest.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import com.tarun.nest.enums.UserRole;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class RegisterResponse {
-    
+
     private String message;
+    private boolean success;
     private Long userId;
-    private String username;
+    private String name;
     private String email;
-    private String firstName;
-    private String lastName;
     private UserRole role;
-    private Boolean success;
+
+    public RegisterResponse() {
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
+    }
 }

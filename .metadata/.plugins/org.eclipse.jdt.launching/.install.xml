@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<dirs>
+    <entry loc="/Applications/Eclipse.app/Contents/Eclipse/plugins/org.eclipse.justj.openjdk.hotspot.jre.full.macosx.aarch64_21.0.11.v20260515-1531" stamp="1780561554000"/>
+    <entry loc="/Applications/Eclipse.app/Contents/Eclipse/plugins/org.eclipse.justj.openjdk.hotspot.jre.full.macosx.aarch64_21.0.11.v20260515-1531/jre" stamp="1780561554000"/>
+    <entry loc="/Library/Java/JavaVirtualMachines/jdk-22.jdk/Contents/Home" stamp="1723383029419"/>
+    <entry loc="/Users/tarunkumar/Library/Java/JavaVirtualMachines/corretto-21.0.6/Contents/Home" stamp="1741088793371"/>
+    <entry loc="/Users/tarunkumar/Library/Java/JavaVirtualMachines/corretto-21.0.4/Contents/Home" stamp="1723383165021"/>
+</dirs>
