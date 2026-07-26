@@ -5,6 +5,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import com.tarun.nest.dto.LoginRequest;
+import com.tarun.nest.dto.LoginResponse;
 import com.tarun.nest.dto.RegisterRequest;
 import com.tarun.nest.dto.RegisterResponse;
 import com.tarun.nest.service.AuthService;
@@ -29,6 +31,13 @@ public class AuthController {
         RegisterResponse response = authService.register(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+    
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+    		@Valid @RequestBody LoginRequest request) {
+    			LoginResponse response = authService.login(request);
+		return ResponseEntity.ok(response);
     }
 
 }
