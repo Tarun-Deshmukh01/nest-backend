@@ -91,15 +91,13 @@ public class AuthServiceImpl implements AuthService {
         // Generate token dynamically with user details
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
 
-        LoginResponse response = new LoginResponse();
-
-        response.setToken(token);
-        response.setMessage("Login Successful");
-        response.setUserId(user.getId());
-        response.setEmail(user.getEmail());
-        response.setName(user.getName());
-
-        return response;
+        return new LoginResponse(
+                token,
+                "Login Successful",
+                user.getId(),
+                user.getEmail(),
+                user.getName()
+        );
     }
 
     @Override

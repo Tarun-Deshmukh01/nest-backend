@@ -11,12 +11,8 @@ public class LoginResponse {
     public LoginResponse() {
     }
 
-//    public LoginResponse(String token) {
-//        this.token = token;
-//    }
-
-    public LoginResponse(String message, Long userId, String email, String name) {
-//        this.token = token;
+    public LoginResponse(String token, String message, Long userId, String email, String name) {
+        this.token = token;
         this.message = message;
         this.userId = userId;
         this.email = email;
