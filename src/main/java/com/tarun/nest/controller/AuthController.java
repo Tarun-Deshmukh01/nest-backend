@@ -1,10 +1,12 @@
 package com.tarun.nest.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import com.tarun.nest.dto.ApiResponse;
 import com.tarun.nest.dto.LoginRequest;
 import com.tarun.nest.dto.LoginResponse;
 import com.tarun.nest.dto.RegisterRequest;
@@ -37,7 +39,19 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login(
     		@Valid @RequestBody LoginRequest request) {
     			LoginResponse response = authService.login(request);
-		return ResponseEntity.ok(response);
+    			
+    			// Add token to response header
+    			HttpHeaders headers = new HttpHeaders();
+    			headers.set("Authorization", "Bearer " + response.getToken());
+    			
+    			return ResponseEntity.ok()
+    					.headers(headers)
+    					.body(response);
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse> logout() {
+
+        return ResponseEntity.ok(authService.logout());
     }
 
 }

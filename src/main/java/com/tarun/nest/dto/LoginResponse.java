@@ -1,7 +1,10 @@
 package com.tarun.nest.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class LoginResponse {
 
+    @JsonIgnore
     private String token;
     private String message;
     private Long userId;
@@ -9,10 +12,6 @@ public class LoginResponse {
     private String name;
 
     public LoginResponse() {
-    }
-
-    public LoginResponse(String token) {
-        this.token = token;
     }
 
     public LoginResponse(String token, String message, Long userId, String email, String name) {
