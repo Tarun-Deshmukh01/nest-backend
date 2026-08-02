@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import com.tarun.nest.dto.ApiResponse;
 import com.tarun.nest.dto.LoginRequest;
 import com.tarun.nest.dto.LoginResponse;
 import com.tarun.nest.dto.RegisterRequest;
@@ -38,6 +39,11 @@ public class AuthController {
     		@Valid @RequestBody LoginRequest request) {
     			LoginResponse response = authService.login(request);
 		return ResponseEntity.ok(response);
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse> logout() {
+
+        return ResponseEntity.ok(authService.logout());
     }
 
 }

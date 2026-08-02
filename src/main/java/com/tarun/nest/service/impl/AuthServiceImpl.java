@@ -3,6 +3,7 @@ package com.tarun.nest.service.impl;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.tarun.nest.dto.ApiResponse;
 import com.tarun.nest.dto.LoginRequest;
 import com.tarun.nest.dto.LoginResponse;
 import com.tarun.nest.dto.RegisterRequest;
@@ -87,7 +88,8 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("Invalid email or password");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail());
+        // Generate token dynamically with user details
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
 
         LoginResponse response = new LoginResponse();
 
@@ -99,4 +101,11 @@ public class AuthServiceImpl implements AuthService {
 
         return response;
     }
+
+    @Override
+    public ApiResponse logout() {
+
+        return new ApiResponse(true, "Logout successful.");
+    }
+    
 }
