@@ -1,0 +1,10 @@
+target/
+.git/
+.gitignore
+.idea/
+.metadata/
+.settings/
+.classpath
+.project
+.env
+README.md
