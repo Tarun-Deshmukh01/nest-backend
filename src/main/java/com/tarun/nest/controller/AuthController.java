@@ -1,30 +1,20 @@
 package com.tarun.nest.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-
-import com.tarun.nest.dto.ApiResponse;
-import com.tarun.nest.dto.LoginRequest;
-import com.tarun.nest.dto.LoginResponse;
 import com.tarun.nest.dto.RegisterRequest;
 import com.tarun.nest.dto.RegisterResponse;
 import com.tarun.nest.service.AuthService;
-
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@Validated
+@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
-
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(
@@ -32,26 +22,8 @@ public class AuthController {
 
         RegisterResponse response = authService.register(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
-    
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(
-    		@Valid @RequestBody LoginRequest request) {
-    			LoginResponse response = authService.login(request);
-    			
-    			// Add token to response header
-    			HttpHeaders headers = new HttpHeaders();
-    			headers.set("Authorization", "Bearer " + response.getToken());
-    			
-    			return ResponseEntity.ok()
-    					.headers(headers)
-    					.body(response);
-    }
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse> logout() {
-
-        return ResponseEntity.ok(authService.logout());
-    }
-
 }
