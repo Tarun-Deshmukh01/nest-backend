@@ -1,39 +1,69 @@
+# =========================
 # Maven
+# =========================
 target/
 !.mvn/wrapper/maven-wrapper.jar
 
+
+# =========================
 # Eclipse
+# =========================
+.metadata/
 .classpath
 .project
 .settings/
-
-# Spring Tools / Eclipse
+.factorypath
 .springBeans
 .sts4-cache/
 
+
+# =========================
 # IntelliJ IDEA
+# =========================
 .idea/
 *.iml
 
+
+# =========================
 # VS Code
+# =========================
 .vscode/
 
-# OS files
-.DS_Store
 
-# Logs
-*.log
-
-# Environment variables / secrets
+# =========================
+# Environment / Secrets
+# =========================
 .env
 .env.*
 !.env.example
 
+
+# =========================
 # Java
+# =========================
 *.class
 
+
+# =========================
+# Logs
+# =========================
+*.log
+
+
+# =========================
+# OS
+# =========================
+.DS_Store
+
+
+# =========================
 # Temporary files
+# =========================
 *.tmp
 *.swp
+<<<<<<< Upstream, based on branch 'dev' of git@github.com:Tarun-Deshmukh01/nest-backend.git
 
 .env
+=======
+*.swo
+>>>>>>> ea133c3 gitignore updated metadata
