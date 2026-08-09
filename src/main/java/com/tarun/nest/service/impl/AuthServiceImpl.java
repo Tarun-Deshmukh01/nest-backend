@@ -1,5 +1,6 @@
 package com.tarun.nest.service.impl;
 
+import com.tarun.nest.entity.Role;
 import com.tarun.nest.dto.RegisterRequest;
 import com.tarun.nest.dto.RegisterResponse;
 import com.tarun.nest.entity.User;
@@ -23,9 +24,22 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Email already registered");
         }
 
+        if (!request.password().equals(request.confirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
+
+        if (request.role() == Role.ADMIN) {
+            throw new IllegalArgumentException("Admin registration is not allowed");
+        }
+
         User user = new User();
+
+        user.setName(request.name());
         user.setEmail(request.email());
+        user.setPhoneNumber(request.phoneNumber());
         user.setPassword(passwordEncoder.encode(request.password()));
+        user.setRole(request.role());
+        user.setActive(true);
 
         User savedUser = userRepository.save(user);
 
