@@ -1,4 +1,4 @@
-package com.tarun.nest.security;
+package com.tarun.nest.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

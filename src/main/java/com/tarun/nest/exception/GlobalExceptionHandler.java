@@ -41,6 +41,14 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthentication(
+            AuthenticationException ex,
+            HttpServletRequest request) {
+
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
 //    @ExceptionHandler(InvalidSecurityCodeException.class)
 //    public ResponseEntity<ErrorResponse> handleSecurity(
 //            InvalidSecurityCodeException ex,
