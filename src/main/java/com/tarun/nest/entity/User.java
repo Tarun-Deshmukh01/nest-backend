@@ -1,9 +1,7 @@
 package com.tarun.nest.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -12,6 +10,8 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
+@ToString(exclude = "password")
+@EqualsAndHashCode(of = {"id", "email"})
 public class User {
 
     @Id

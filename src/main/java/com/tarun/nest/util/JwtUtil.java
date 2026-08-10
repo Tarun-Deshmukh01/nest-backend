@@ -1,4 +1,4 @@
-package com.tarun.nest.security;
+package com.tarun.nest.util;
 
 import java.security.Key;
 import java.util.Date;
