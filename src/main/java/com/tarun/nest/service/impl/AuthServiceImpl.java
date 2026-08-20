@@ -39,23 +39,23 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Passwords do not match");
         }
 
-        if (request.role() == Role.ADMIN) {
-            log.warn("Registration attempt with admin role for: {}", request.email());
-            throw new IllegalArgumentException("Admin registration is not allowed");
-        }
-
         User user = new User();
         user.setName(request.name());
         user.setEmail(request.email());
         user.setPhoneNumber(request.phoneNumber());
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.setRole(request.role());
+        // Force role to USER for public registration
+        user.setRole(Role.USER);
         user.setActive(true);
 
         User savedUser = userRepository.save(user);
         log.info("User registered successfully: {}", savedUser.getEmail());
 
-        return new RegisterResponse(savedUser.getId(), savedUser.getEmail());
+        return new RegisterResponse(
+                savedUser.getId(),
+                savedUser.getEmail(),
+                savedUser.getRole().toString()
+        );
     }
 
     @Override
@@ -77,9 +77,14 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthenticationException("Invalid email or password");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail());
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().toString());
         log.info("User logged in successfully: {}", request.email());
 
-        return new LoginResponse(token, user.getEmail());
+        return new LoginResponse(
+                token,
+                user.getId(),
+                user.getEmail(),
+                user.getRole().toString()
+        );
     }
 }
