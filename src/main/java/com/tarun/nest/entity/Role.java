@@ -1,7 +1,7 @@
 package com.tarun.nest.entity;
 
 public enum Role {
-	CUSTOMER,
+	USER,
 	ADMIN,
 	VENDOR
 }

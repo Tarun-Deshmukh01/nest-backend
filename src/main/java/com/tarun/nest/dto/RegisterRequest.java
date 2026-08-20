@@ -1,9 +1,7 @@
 package com.tarun.nest.dto;
 
 import jakarta.validation.constraints.Email;
-import com.tarun.nest.entity.Role;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
@@ -25,11 +23,7 @@ public record RegisterRequest(
         
         @NotBlank(message = "Confirm password is required")
 		@Size(min = 8, message = "Confirm password must contain at least 8 characters")
-		String confirmPassword,
-        
-		@NotNull(message = "Role is required")
-		Role role
-        
+		String confirmPassword
 
 ) {
 	
