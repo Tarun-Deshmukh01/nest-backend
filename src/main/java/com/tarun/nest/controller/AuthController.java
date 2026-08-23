@@ -1,5 +1,6 @@
 package com.tarun.nest.controller;
 
+import com.tarun.nest.dto.ApiResponse;
 import com.tarun.nest.dto.LoginRequest;
 import com.tarun.nest.dto.LoginResponse;
 import com.tarun.nest.dto.RegisterRequest;
@@ -8,6 +9,8 @@ import com.tarun.nest.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,5 +41,23 @@ public class AuthController {
         log.info("Login request for email: {}", request.email());
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse> logout(Authentication authentication) {
+
+        log.info(
+                "Logout request for user: {}",
+                authentication != null
+                        ? authentication.name()
+                        : "unknown"
+        );
+
+        return ResponseEntity.ok(
+                new ApiResponse(
+                        HttpStatus.OK.value(),
+                        "Logout successful",
+                        null
+                )
+        );
     }
 }

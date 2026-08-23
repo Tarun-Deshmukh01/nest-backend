@@ -42,10 +42,9 @@ public class AuthServiceImpl implements AuthService {
         User user = new User();
         user.setName(request.name());
         user.setEmail(request.email());
-        user.setPhoneNumber(request.phoneNumber());
+        user.setPhoneNumber(request.mobileNumber());
         user.setPassword(passwordEncoder.encode(request.password()));
-        // Force role to USER for public registration
-        user.setRole(Role.USER);
+        user.setRole(Role.valueOf(request.role().toUpperCase()));
         user.setActive(true);
 
         User savedUser = userRepository.save(user);
@@ -84,6 +83,7 @@ public class AuthServiceImpl implements AuthService {
                 token,
                 user.getId(),
                 user.getEmail(),
+                user.getName(),
                 user.getRole().toString()
         );
     }
