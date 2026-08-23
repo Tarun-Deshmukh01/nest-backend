@@ -1,5 +1,6 @@
 package com.tarun.nest.util;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
@@ -22,10 +23,13 @@ public class JwtUtil {
     private long expiration;
 
     private Key getKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        return Keys.hmacShaKeyFor(
+                secret.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
     public String generateToken(String email) {
+
         return Jwts.builder()
                 .subject(email)
                 .issuedAt(new Date())
@@ -35,6 +39,7 @@ public class JwtUtil {
     }
 
     public String generateToken(Long userId, String email, String role) {
+
         return Jwts.builder()
                 .subject(email)
                 .claim("userId", userId)
@@ -46,12 +51,14 @@ public class JwtUtil {
     }
 
     public Claims extractAllClaims(String token) {
+
         try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(getKey())
+            return Jwts.parser()
+                    .verifyWith((javax.crypto.SecretKey) getKey())
                     .build()
-                    .parseClaimsJws(token)
-                    .getBody();
+                    .parseSignedClaims(token)
+                    .getPayload();
+
         } catch (JwtException e) {
             throw new IllegalArgumentException("Invalid JWT token", e);
         }
@@ -68,30 +75,33 @@ public class JwtUtil {
 
     public Long extractUserId(String token) {
         Object userId = extractAllClaims(token).get("userId");
-        if (userId instanceof Integer) {
-            return ((Integer) userId).longValue();
-        } else if (userId instanceof Long) {
-            return (Long) userId;
+
+        if (userId instanceof Number) {
+            return ((Number) userId).longValue();
         }
+
         return null;
     }
 
     public boolean isTokenValid(String token) {
+
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(getKey())
-                    .build()
-                    .parseClaimsJws(token);
+            extractAllClaims(token);
             return !isTokenExpired(token);
-        } catch (JwtException e) {
+
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
     public boolean isTokenExpired(String token) {
+
         try {
-            return extractAllClaims(token).getExpiration().before(new Date());
-        } catch (JwtException e) {
+            return extractAllClaims(token)
+                    .getExpiration()
+                    .before(new Date());
+
+        } catch (JwtException | IllegalArgumentException e) {
             return true;
         }
     }

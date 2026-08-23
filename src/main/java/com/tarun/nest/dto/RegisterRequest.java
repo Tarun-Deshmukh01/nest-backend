@@ -15,7 +15,7 @@ public record RegisterRequest(
         
         @NotBlank(message = "Phone number is required")
 		@Size(min = 10, max = 10, message = "Phone number must be in 10 digits")
-		String phoneNumber,
+		String mobileNumber,
 
         @NotBlank(message = "Password is required")
         @Size(min = 8, message = "Password must contain at least 8 characters")
@@ -23,7 +23,10 @@ public record RegisterRequest(
         
         @NotBlank(message = "Confirm password is required")
 		@Size(min = 8, message = "Confirm password must contain at least 8 characters")
-		String confirmPassword
+		String confirmPassword,
+		
+		@NotBlank(message = "Role is required")
+		String role
 
 ) {
 	
