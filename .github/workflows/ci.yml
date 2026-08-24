@@ -12,9 +12,26 @@ on:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: nest
+          POSTGRES_USER: tarunkumar
+          POSTGRES_PASSWORD: 1234
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U tarunkumar -d nest"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -29,4 +46,10 @@ jobs:
         run: chmod +x mvnw
 
       - name: Build and test
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/nest
+          SPRING_DATASOURCE_USERNAME: tarunkumar
+          SPRING_DATASOURCE_PASSWORD: 1234
+          JWT_SECRET: test-secret-key-for-github-actions
+          JWT_EXPIRATION: 86400000
         run: ./mvnw clean verify
