@@ -1,6 +1,7 @@
 package com.tarun.nest.service;
 
 import com.tarun.nest.dto.AddProduct;
+import com.tarun.nest.dto.ProductResponse;
 import com.tarun.nest.entity.Product;
 import com.tarun.nest.entity.User;
 import com.tarun.nest.repository.ProductRepository;
@@ -13,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -70,10 +72,26 @@ public class ProductService {
         product.setPrice(request.getPrice());
         product.setStock(request.getStock());
 
-        // Very important:
-        // Attach the logged-in vendor
+        // Logged-in vendor
         product.setVendor(vendor);
 
         return productRepository.save(product);
+    }
+
+
+    public List<ProductResponse> getVendorProducts(User vendor) {
+
+        return productRepository.findByVendor(vendor)
+                .stream()
+                .map(product -> new ProductResponse(
+                        product.getId(),
+                        product.getName(),
+                        product.getImageUrl(),
+                        product.getCategory(),
+                        product.getStatus(),
+                        product.getPrice(),
+                        product.getStock()
+                ))
+                .toList();
     }
 }

@@ -12,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import com.tarun.nest.dto.ProductResponse;
+
+import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -72,5 +75,34 @@ public class VendorController {
                             null
                     ));
         }
+    }
+    @GetMapping("/products")
+    public ResponseEntity<ApiResponse> getProducts(
+            Authentication authentication) {
+
+        log.info(
+                "Fetching products for vendor: {}",
+                authentication.getName()
+        );
+
+        JwtAuthenticationDetails details =
+                (JwtAuthenticationDetails) authentication.getDetails();
+
+        User vendor = userRepository
+                .findById(details.getUserId())
+                .orElseThrow(() ->
+                        new RuntimeException("Vendor not found")
+                );
+
+        List<ProductResponse> products =
+                productService.getVendorProducts(vendor);
+
+        return ResponseEntity.ok(
+                new ApiResponse(
+                        HttpStatus.OK.value(),
+                        "Vendor products retrieved successfully",
+                        products
+                )
+        );
     }
 }
