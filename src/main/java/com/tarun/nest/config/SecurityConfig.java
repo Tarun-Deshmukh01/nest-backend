@@ -31,9 +31,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
                         // USER endpoints
-                        .requestMatchers("/api/user/**").hasRole("USER")
-                        .requestMatchers("/api/orders/**").hasRole("USER")
-                        .requestMatchers("/api/cart/**").hasRole("USER")
+                        .requestMatchers("/api/user/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/orders/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/cart/**").hasRole("CUSTOMER")
                         // VENDOR endpoints
                         .requestMatchers("/api/vendor/**").hasRole("VENDOR")
                         // ADMIN endpoints

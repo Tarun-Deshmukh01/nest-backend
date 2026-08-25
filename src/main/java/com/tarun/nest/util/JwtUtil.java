@@ -28,16 +28,6 @@ public class JwtUtil {
         );
     }
 
-    public String generateToken(String email) {
-
-        return Jwts.builder()
-                .subject(email)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
     public String generateToken(Long userId, String email, String role) {
 
         return Jwts.builder()

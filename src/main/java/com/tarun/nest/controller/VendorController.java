@@ -1,7 +1,12 @@
 package com.tarun.nest.controller;
 
+import com.tarun.nest.dto.AddProduct;
 import com.tarun.nest.dto.ApiResponse;
+import com.tarun.nest.entity.Product;
+import com.tarun.nest.entity.User;
+import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.security.JwtAuthenticationDetails;
+import com.tarun.nest.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -9,194 +14,63 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/api/vendor")
 @RequiredArgsConstructor
 @Slf4j
 public class VendorController {
 
-    @GetMapping("/dashboard")
-    public ResponseEntity<ApiResponse> getDashboard(Authentication authentication) {
-        log.info("Fetching dashboard for vendor: {}", authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Vendor dashboard retrieved successfully",
-                null
-        ));
-    }
+    private final ProductService productService;
+    private final UserRepository userRepository;
 
-    @GetMapping("/profile")
-    public ResponseEntity<ApiResponse> getProfile(Authentication authentication) {
-        log.info("Fetching vendor profile for: {}", authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Vendor profile retrieved successfully",
-                details
-        ));
-    }
-
-    @PostMapping("/products/add")
+    @PostMapping(
+            value = "/products",
+            consumes = "multipart/form-data"
+    )
     public ResponseEntity<ApiResponse> addProduct(
-            @RequestBody String productData,
+            @ModelAttribute AddProduct productData,
             Authentication authentication) {
-        log.info("Vendor {} adding new product", authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse(
-                HttpStatus.CREATED.value(),
-                "Product added successfully",
-                null
-        ));
-    }
 
-    @GetMapping("/products")
-    public ResponseEntity<ApiResponse> getProducts(Authentication authentication) {
-        log.info("Fetching products for vendor: {}", authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Vendor products retrieved successfully",
-                null
-        ));
-    }
+        try {
+            log.info(
+                    "Vendor {} adding new product: {}",
+                    authentication.getName(),
+                    productData.getName()
+            );
 
-    @GetMapping("/products/{productId}")
-    public ResponseEntity<ApiResponse> getProductDetails(
-            @PathVariable Long productId,
-            Authentication authentication) {
-        log.info("Fetching product {} details for vendor: {}", productId, authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Product details retrieved successfully",
-                null
-        ));
-    }
+            JwtAuthenticationDetails details =
+                    (JwtAuthenticationDetails) authentication.getDetails();
 
-    @PutMapping("/products/{productId}/update")
-    public ResponseEntity<ApiResponse> updateProduct(
-            @PathVariable Long productId,
-            @RequestBody String productData,
-            Authentication authentication) {
-        log.info("Vendor {} updating product {}", authentication.getName(), productId);
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Product updated successfully",
-                null
-        ));
-    }
+            User vendor = userRepository
+                    .findById(details.getUserId())
+                    .orElseThrow(() ->
+                            new RuntimeException("Vendor not found")
+                    );
 
-    @DeleteMapping("/products/{productId}/delete")
-    public ResponseEntity<ApiResponse> deleteProduct(
-            @PathVariable Long productId,
-            Authentication authentication) {
-        log.info("Vendor {} deleting product {}", authentication.getName(), productId);
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Product deleted successfully",
-                null
-        ));
-    }
+            Product product =
+                    productService.addProduct(productData, vendor);
 
-    @GetMapping("/inventory")
-    public ResponseEntity<ApiResponse> getInventory(Authentication authentication) {
-        log.info("Fetching inventory for vendor: {}", authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Inventory retrieved successfully",
-                null
-        ));
-    }
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(new ApiResponse(
+                            HttpStatus.CREATED.value(),
+                            "Product added successfully",
+                            product
+                    ));
 
-    @PutMapping("/inventory/{productId}/update")
-    public ResponseEntity<ApiResponse> updateInventory(
-            @PathVariable Long productId,
-            @RequestParam Integer quantity,
-            Authentication authentication) {
-        log.info("Vendor {} updating inventory for product {}", authentication.getName(), productId);
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Inventory updated successfully",
-                null
-        ));
-    }
+        } catch (IOException e) {
 
-    @GetMapping("/orders")
-    public ResponseEntity<ApiResponse> getSellerOrders(Authentication authentication) {
-        log.info("Fetching seller orders for vendor: {}", authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Seller orders retrieved successfully",
-                null
-        ));
-    }
+            log.error("Failed to save product image", e);
 
-    @GetMapping("/orders/{orderId}")
-    public ResponseEntity<ApiResponse> getSellerOrderDetails(
-            @PathVariable Long orderId,
-            Authentication authentication) {
-        log.info("Fetching order {} details for vendor: {}", orderId, authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Order details retrieved successfully",
-                null
-        ));
-    }
-
-    @PutMapping("/orders/{orderId}/status")
-    public ResponseEntity<ApiResponse> updateOrderStatus(
-            @PathVariable Long orderId,
-            @RequestParam String status,
-            Authentication authentication) {
-        log.info("Vendor {} updating order {} status to: {}", authentication.getName(), orderId, status);
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Order status updated successfully",
-                null
-        ));
-    }
-
-    @GetMapping("/earnings")
-    public ResponseEntity<ApiResponse> getEarnings(Authentication authentication) {
-        log.info("Fetching earnings for vendor: {}", authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Earnings retrieved successfully",
-                null
-        ));
-    }
-
-    @GetMapping("/ratings")
-    public ResponseEntity<ApiResponse> getRatings(Authentication authentication) {
-        log.info("Fetching ratings for vendor: {}", authentication.getName());
-        JwtAuthenticationDetails details = (JwtAuthenticationDetails) authentication.getDetails();
-        
-        return ResponseEntity.ok(new ApiResponse(
-                HttpStatus.OK.value(),
-                "Ratings retrieved successfully",
-                null
-        ));
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "Failed to upload product image",
+                            null
+                    ));
+        }
     }
 }
