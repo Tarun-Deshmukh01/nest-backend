@@ -29,26 +29,45 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public RegisterResponse register(RegisterRequest request) {
 
+        long totalStart = System.currentTimeMillis();
+
+        long emailCheckStart = System.currentTimeMillis();
+
         if (userRepository.existsByEmail(request.email())) {
-            log.warn("Registration attempt with existing email: {}", request.email());
             throw new IllegalArgumentException("Email already registered");
         }
 
+        log.info("Email existence check took: {} ms",
+                System.currentTimeMillis() - emailCheckStart);
+
         if (!request.password().equals(request.confirmPassword())) {
-            log.warn("Registration attempt with mismatched passwords for: {}", request.email());
             throw new IllegalArgumentException("Passwords do not match");
         }
+
+        long bcryptStart = System.currentTimeMillis();
+
+        String encodedPassword = passwordEncoder.encode(request.password());
+
+        log.info("BCrypt encoding took: {} ms",
+                System.currentTimeMillis() - bcryptStart);
 
         User user = new User();
         user.setName(request.name());
         user.setEmail(request.email());
         user.setMobileNumber(request.mobileNumber());
-        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setPassword(encodedPassword);
         user.setRole(Role.valueOf(request.role().toUpperCase()));
         user.setActive(true);
 
+        long saveStart = System.currentTimeMillis();
+
         User savedUser = userRepository.save(user);
-        log.info("User registered successfully: {}", savedUser.getEmail());
+
+        log.info("Database save took: {} ms",
+                System.currentTimeMillis() - saveStart);
+
+        log.info("TOTAL registration took: {} ms",
+                System.currentTimeMillis() - totalStart);
 
         return new RegisterResponse(
                 savedUser.getId(),
@@ -60,24 +79,43 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest request) {
 
+        long totalStart = System.currentTimeMillis();
+
+        long dbStart = System.currentTimeMillis();
+
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> {
-                    log.warn("Login attempt with non-existent email: {}", request.email());
-                    return new AuthenticationException("Invalid email or password");
-                });
+                .orElseThrow(() ->
+                        new AuthenticationException("Invalid email or password"));
+
+        log.info("DB lookup took: {} ms",
+                System.currentTimeMillis() - dbStart);
 
         if (!user.getActive()) {
-            log.warn("Login attempt for inactive user: {}", request.email());
             throw new AuthenticationException("User account is inactive");
         }
 
+        long passwordStart = System.currentTimeMillis();
+
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            log.warn("Login attempt with wrong password for user: {}", request.email());
             throw new AuthenticationException("Invalid email or password");
         }
 
-        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().toString());
-        log.info("User logged in successfully: {}", request.email());
+        log.info("BCrypt password check took: {} ms",
+                System.currentTimeMillis() - passwordStart);
+
+        long jwtStart = System.currentTimeMillis();
+
+        String token = jwtUtil.generateToken(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().toString()
+        );
+
+        log.info("JWT generation took: {} ms",
+                System.currentTimeMillis() - jwtStart);
+
+        log.info("TOTAL login took: {} ms",
+                System.currentTimeMillis() - totalStart);
 
         return new LoginResponse(
                 token,
