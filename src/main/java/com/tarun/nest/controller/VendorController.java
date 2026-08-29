@@ -7,12 +7,16 @@ import com.tarun.nest.entity.User;
 import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.security.JwtAuthenticationDetails;
 import com.tarun.nest.service.ProductService;
+import com.tarun.nest.service.VendorService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import com.tarun.nest.dto.ProductResponse;
+import com.tarun.nest.dto.VendorRequest;
+import com.tarun.nest.dto.VendorResponse;
 
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +31,7 @@ public class VendorController {
 
     private final ProductService productService;
     private final UserRepository userRepository;
+    private final VendorService vendorService;
 
     @PostMapping(
             value = "/products",
@@ -76,6 +81,54 @@ public class VendorController {
                     ));
         }
     }
+    
+    
+    @PostMapping("/apply")
+    public ResponseEntity<ApiResponse> applyForApproval(
+            @RequestBody VendorRequest request,
+            Authentication authentication) {
+
+        log.info(
+                "Vendor {} applying for approval",
+                authentication.getName()
+        );
+
+        JwtAuthenticationDetails details =
+                (JwtAuthenticationDetails) authentication.getDetails();
+
+        User vendor = userRepository
+                .findById(details.getUserId())
+                .orElseThrow(() ->
+                        new RuntimeException("Vendor not found")
+                );
+
+        VendorResponse response =
+                vendorService.applyForApproval(request, vendor);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(new ApiResponse(
+                        HttpStatus.CREATED.value(),
+                        "Vendor approval request submitted successfully",
+                        response
+                ));
+    }
+    @GetMapping("/vendors/pending")
+    public ResponseEntity<ApiResponse> getPendingVendors() {
+
+        List<VendorResponse> vendors =
+                vendorService.getPendingVendors();
+
+        return ResponseEntity.ok(
+                new ApiResponse(
+                        HttpStatus.OK.value(),
+                        "Pending vendor requests retrieved successfully",
+                        vendors
+                )
+        );
+    }
+    
+    
     @GetMapping("/products")
     public ResponseEntity<ApiResponse> getProducts(
             Authentication authentication) {
