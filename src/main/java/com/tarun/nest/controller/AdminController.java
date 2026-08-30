@@ -1,7 +1,9 @@
 package com.tarun.nest.controller;
 
+import com.tarun.nest.dto.AdminDashboardResponse;
 import com.tarun.nest.dto.ApiResponse;
 import com.tarun.nest.dto.VendorResponse;
+import com.tarun.nest.service.AdminDashboardService;
 import com.tarun.nest.service.VendorService;
 
 import lombok.RequiredArgsConstructor;
@@ -23,10 +25,8 @@ import java.util.List;
 public class AdminController {
 
     private final VendorService vendorService;
+    private final AdminDashboardService adminDashboardService;
 
-    // =========================
-    // Admin Dashboard
-    // =========================
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponse> getDashboard(
             Authentication authentication) {
@@ -36,18 +36,19 @@ public class AdminController {
                 authentication.getName()
         );
 
+        AdminDashboardResponse dashboard =
+                adminDashboardService.getDashboard();
+
         return ResponseEntity.ok(
                 new ApiResponse(
                         HttpStatus.OK.value(),
                         "Admin dashboard retrieved successfully",
-                        null
+                        dashboard
                 )
         );
     }
 
-    // =========================
-    // Pending Vendor Requests
-    // =========================
+
     @GetMapping("/vendor-requests")
     public ResponseEntity<ApiResponse> getVendorRequests(
             Authentication authentication) {
