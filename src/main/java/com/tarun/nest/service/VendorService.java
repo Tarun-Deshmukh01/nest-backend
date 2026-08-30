@@ -10,8 +10,11 @@ public interface VendorService {
 
 	VendorResponse applyForApproval(VendorRequest request, User vendor);
 	List<VendorResponse> getPendingVendors();
+	
+	List<VendorResponse> getAllVendors();
 
 	void approveVendor(Long vendorId);
 
 	void declineVendor(Long vendorId);
+	
 }

@@ -160,4 +160,13 @@ public class VendorServiceImpl implements VendorService {
 
         vendorRepository.save(vendor);
     }
+    @Override
+    public List<VendorResponse> getAllVendors() {
+
+        List<Vendor> vendors = vendorRepository.findAll();
+
+        return vendors.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
 }

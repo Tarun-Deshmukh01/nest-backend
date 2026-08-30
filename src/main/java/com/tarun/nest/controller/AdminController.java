@@ -133,4 +133,24 @@ public class AdminController {
                 )
         );
     }
+    @GetMapping("/vendors")
+    public ResponseEntity<ApiResponse> getAllVendors(
+            Authentication authentication) {
+
+        log.info(
+                "Fetching all vendors for admin: {}",
+                authentication.getName()
+        );
+
+        List<VendorResponse> vendors =
+                vendorService.getAllVendors();
+
+        return ResponseEntity.ok(
+                new ApiResponse(
+                        HttpStatus.OK.value(),
+                        "All vendors retrieved successfully",
+                        vendors
+                )
+        );
+    }
 }
