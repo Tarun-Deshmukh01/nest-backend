@@ -1,3 +1,4 @@
+```yaml
 name: Backend CI/CD
 
 on:
@@ -8,15 +9,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nest_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d nest_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
-      # 1. Checkout source code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Setup Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -24,17 +38,22 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # 3. Give Maven wrapper permission
       - name: Make Maven wrapper executable
         run: chmod +x mvnw
 
-      # 4. Build and run tests
       - name: Build and test
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/nest_test
+          SPRING_DATASOURCE_USERNAME: postgres
+          SPRING_DATASOURCE_PASSWORD: postgres
         run: ./mvnw clean verify
 
-      # 5. Trigger Render deployment
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Deploy to Render
-        if: success()
         run: |
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-
+```
