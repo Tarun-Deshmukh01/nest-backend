@@ -86,19 +86,6 @@ public class VendorServiceImpl implements VendorService {
     }
 
 
-    // Admin: Get pending vendor requests
-    @Override
-    public List<VendorResponse> getPendingVendors() {
-
-        List<Vendor> vendors =
-                vendorRepository.findByStatus("PENDING");
-
-        return vendors.stream()
-                .map(this::mapToResponse)
-                .toList();
-    }
-
-
     // Entity -> Response
     private VendorResponse mapToResponse(Vendor vendor) {
 
@@ -128,5 +115,58 @@ public class VendorServiceImpl implements VendorService {
 
                 vendor.getStatus()
         );
+    }
+    @Override
+    public List<VendorResponse> getPendingVendors() {
+
+        List<Vendor> vendors =
+                vendorRepository.findByStatus("PENDING");
+
+        return vendors.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+    @Override
+    public void approveVendor(Long vendorId) {
+
+        Vendor vendor = vendorRepository.findById(vendorId)
+                .orElseThrow(() ->
+                        new RuntimeException("Vendor not found"));
+
+        if (!"PENDING".equalsIgnoreCase(vendor.getStatus())) {
+            throw new RuntimeException(
+                    "Only pending vendors can be approved"
+            );
+        }
+
+        vendor.setStatus("APPROVED");
+
+        vendorRepository.save(vendor);
+    }
+    @Override
+    public void declineVendor(Long vendorId) {
+
+        Vendor vendor = vendorRepository.findById(vendorId)
+                .orElseThrow(() ->
+                        new RuntimeException("Vendor not found"));
+
+        if (!"PENDING".equalsIgnoreCase(vendor.getStatus())) {
+            throw new RuntimeException(
+                    "Only pending vendors can be declined"
+            );
+        }
+
+        vendor.setStatus("REJECTED");
+
+        vendorRepository.save(vendor);
+    }
+    @Override
+    public List<VendorResponse> getAllVendors() {
+
+        List<Vendor> vendors = vendorRepository.findAll();
+
+        return vendors.stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 }
