@@ -10,6 +10,8 @@ import com.tarun.nest.exception.AuthenticationException;
 import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.service.AuthService;
 import com.tarun.nest.util.JwtUtil;
+import com.tarun.nest.entity.Vendor;
+import com.tarun.nest.repository.VendorRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final VendorRepository vendorRepository;
 
     @Override
     public RegisterResponse register(RegisterRequest request) {
@@ -79,31 +82,20 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest request) {
 
-//        long totalStart = System.currentTimeMillis();
-
-//        long dbStart = System.currentTimeMillis();
-
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() ->
                         new AuthenticationException("Invalid email or password"));
-
-//        log.info("DB lookup took: {} ms",
-//                System.currentTimeMillis() - dbStart);
 
         if (!user.getActive()) {
             throw new AuthenticationException("User account is inactive");
         }
 
-//        long passwordStart = System.currentTimeMillis();
-
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+        if (!passwordEncoder.matches(
+                request.password(),
+                user.getPassword()
+        )) {
             throw new AuthenticationException("Invalid email or password");
         }
-
-//        log.info("BCrypt password check took: {} ms",
-//                System.currentTimeMillis() - passwordStart);
-//
-//        long jwtStart = System.currentTimeMillis();
 
         String token = jwtUtil.generateToken(
                 user.getId(),
@@ -111,18 +103,32 @@ public class AuthServiceImpl implements AuthService {
                 user.getRole().toString()
         );
 
-//        log.info("JWT generation took: {} ms",
-//                System.currentTimeMillis() - jwtStart);
-//
-//        log.info("TOTAL login took: {} ms",
-//                System.currentTimeMillis() - totalStart);
+        // Vendor approval status
+        String vendorStatus = null;
+        boolean vendorActive = false;
+
+        if (user.getRole() == Role.VENDOR) {
+
+            Vendor vendor = vendorRepository
+                    .findByUserId(user.getId())
+                    .orElse(null);
+
+            if (vendor != null) {
+                vendorStatus = vendor.getStatus();
+
+                vendorActive =
+                        "APPROVED".equalsIgnoreCase(vendorStatus);
+            }
+        }
 
         return new LoginResponse(
                 token,
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
-                user.getRole().toString()
+                user.getRole().toString(),
+                vendorStatus,
+                vendorActive
         );
     }
 }

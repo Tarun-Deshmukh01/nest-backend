@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+
 import com.tarun.nest.dto.ProductResponse;
 import com.tarun.nest.dto.VendorRequest;
 import com.tarun.nest.dto.VendorResponse;
@@ -112,20 +113,6 @@ public class VendorController {
                         "Vendor approval request submitted successfully",
                         response
                 ));
-    }
-    @GetMapping("/vendors/pending")
-    public ResponseEntity<ApiResponse> getPendingVendors() {
-
-        List<VendorResponse> vendors =
-                vendorService.getPendingVendors();
-
-        return ResponseEntity.ok(
-                new ApiResponse(
-                        HttpStatus.OK.value(),
-                        "Pending vendor requests retrieved successfully",
-                        vendors
-                )
-        );
     }
     
     

@@ -41,6 +41,8 @@ public class VendorResponse {
         private String insta;
 
         private String twitter;
+        
+        private String pinterest;
     }
 
     @Data
@@ -57,5 +59,7 @@ public class VendorResponse {
         private String country;
 
         private String zipcode;
+        
+        private String mobileNumber;
     }
 }

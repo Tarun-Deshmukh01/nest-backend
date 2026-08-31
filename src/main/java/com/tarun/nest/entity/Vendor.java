@@ -24,6 +24,8 @@ public class Vendor {
     private String insta;
 
     private String twitter;
+    
+    private String pinterest;
 
     private String address;
 

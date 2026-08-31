@@ -23,6 +23,7 @@ public class VendorRequest {
         private String fb;
         private String insta;
         private String twitter;
+        private String pinterest;
     }
     
     @Data
