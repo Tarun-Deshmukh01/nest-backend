@@ -113,20 +113,6 @@ public class VendorController {
                         response
                 ));
     }
-    @GetMapping("/vendors/pending")
-    public ResponseEntity<ApiResponse> getPendingVendors() {
-
-        List<VendorResponse> vendors =
-                vendorService.getPendingVendors();
-
-        return ResponseEntity.ok(
-                new ApiResponse(
-                        HttpStatus.OK.value(),
-                        "Pending vendor requests retrieved successfully",
-                        vendors
-                )
-        );
-    }
     
     
     @GetMapping("/products")
