@@ -52,6 +52,10 @@ public class VendorServiceImpl implements VendorService {
         vendor.setTwitter(
                 request.getSocialLinks().getTwitter()
         );
+        
+        vendor.setPinterest(
+				request.getSocialLinks().getPinterest()
+		);
 
         // Business address
         vendor.setAddress(
@@ -102,7 +106,8 @@ public class VendorServiceImpl implements VendorService {
                 new VendorResponse.SocialLinks(
                         vendor.getFb(),
                         vendor.getInsta(),
-                        vendor.getTwitter()
+                        vendor.getTwitter(),
+                        vendor.getPinterest()
                 ),
 
                 new VendorResponse.BusinessAddress(
@@ -110,7 +115,8 @@ public class VendorServiceImpl implements VendorService {
                         vendor.getCity(),
                         vendor.getState(),
                         vendor.getCountry(),
-                        vendor.getZipcode()
+                        vendor.getZipcode(),
+                        vendor.getUser().getMobileNumber()
                 ),
 
                 vendor.getStatus()

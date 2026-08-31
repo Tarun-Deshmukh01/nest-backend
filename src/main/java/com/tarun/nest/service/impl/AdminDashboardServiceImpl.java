@@ -21,9 +21,17 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         long pendingRequests =
                 vendorRepository.countByStatus("PENDING");
 
+        long approvedVendors =
+                vendorRepository.countByStatus("APPROVED");
+
+        long declinedVendors =
+                vendorRepository.countByStatus("REJECTED");
+
         return new AdminDashboardResponse(
                 totalVendors,
-                pendingRequests
+                pendingRequests,
+                approvedVendors,
+                declinedVendors
         );
     }
 }
