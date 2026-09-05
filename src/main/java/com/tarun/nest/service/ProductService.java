@@ -72,12 +72,11 @@ public class ProductService {
         product.setPrice(request.getPrice());
         product.setStock(request.getStock());
 
-        // Logged-in vendor
+        // Logged-in vendor user
         product.setVendor(vendor);
 
         return productRepository.save(product);
     }
-
 
     public List<ProductResponse> getVendorProducts(User vendor) {
 
@@ -90,7 +89,29 @@ public class ProductService {
                         product.getCategory(),
                         product.getStatus(),
                         product.getPrice(),
-                        product.getStock()
+                        product.getStock(),
+                        product.getVendor()
+                                .getVendor()
+                                .getCompanyname()
+                ))
+                .toList();
+    }
+
+    public List<ProductResponse> getAllProducts() {
+
+        return productRepository.findAll()
+                .stream()
+                .map(product -> new ProductResponse(
+                        product.getId(),
+                        product.getName(),
+                        product.getImageUrl(),
+                        product.getCategory(),
+                        product.getStatus(),
+                        product.getPrice(),
+                        product.getStock(),
+                        product.getVendor()
+                                .getVendor()
+                                .getCompanyname()
                 ))
                 .toList();
     }
