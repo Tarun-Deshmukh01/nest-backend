@@ -24,7 +24,7 @@ public class Vendor {
     private String insta;
 
     private String twitter;
-    
+
     private String pinterest;
 
     private String address;
@@ -39,7 +39,7 @@ public class Vendor {
 
     private String status;
 
-    @ManyToOne
+    @OneToOne
     @JoinColumn(name = "user_id")
     private User user;
 }

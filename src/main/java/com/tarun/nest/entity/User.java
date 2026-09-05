@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = "password")
+@ToString(exclude = {"password", "vendor"})
 @EqualsAndHashCode(of = {"id", "email"})
 public class User {
 
@@ -36,6 +36,9 @@ public class User {
 
     @Column(nullable = false)
     private Boolean active = true;
+
+    @OneToOne(mappedBy = "user")
+    private Vendor vendor;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

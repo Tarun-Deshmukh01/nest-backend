@@ -18,4 +18,5 @@ public class ProductResponse {
     private ProductStatus status;
     private BigDecimal price;
     private Integer stock;
+    private String companyName;
 }
