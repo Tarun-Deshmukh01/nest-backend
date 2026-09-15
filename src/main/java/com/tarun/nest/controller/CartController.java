@@ -93,4 +93,25 @@ public class CartController {
 
         return ResponseEntity.ok(response);
     }
+    // Remove product from customer's cart
+    
+ // Delete a specific product from customer's cart
+    @DeleteMapping("/items/{productId}")
+    public ResponseEntity<Void> deleteCartItem(
+            @PathVariable Long productId,
+            Authentication authentication
+    ) {
+
+        Long userId = authorizationUtil.getUserId(authentication);
+
+        if (userId == null) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .build();
+        }
+
+        cartService.deleteCartItem(userId, productId);
+
+        return ResponseEntity.noContent().build();
+    }
 }

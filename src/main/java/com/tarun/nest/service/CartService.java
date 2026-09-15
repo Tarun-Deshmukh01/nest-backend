@@ -132,4 +132,24 @@ public class CartService {
 
         return cartRepository.save(cart);
     }
+    
+    @Transactional
+    public void deleteCartItem(Long userId, Long productId) {
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() ->
+                        new RuntimeException("Cart not found")
+                );
+
+        CartItem cartItem = cartItemRepository
+                .findByCartIdAndProductId(
+                        cart.getId(),
+                        productId
+                )
+                .orElseThrow(() ->
+                        new RuntimeException("Product not found in cart")
+                );
+
+        cartItemRepository.delete(cartItem);
+    }
 }
