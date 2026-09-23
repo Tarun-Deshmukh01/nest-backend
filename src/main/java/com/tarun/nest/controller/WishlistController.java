@@ -6,6 +6,7 @@ import com.tarun.nest.util.AuthorizationUtil;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,11 @@ public class WishlistController {
 
         Long userId = authorizationUtil.getUserId(authentication);
 
-        return ResponseEntity.ok(
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(
                 wishlistService.addToWishlist(userId, productId)
         );
     }
@@ -38,6 +43,10 @@ public class WishlistController {
     ) {
 
         Long userId = authorizationUtil.getUserId(authentication);
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         return ResponseEntity.ok(
                 wishlistService.removeFromWishlist(userId, productId)
@@ -51,6 +60,10 @@ public class WishlistController {
 
         Long userId = authorizationUtil.getUserId(authentication);
 
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         return ResponseEntity.ok(
                 wishlistService.getWishlist(userId)
         );
@@ -63,6 +76,10 @@ public class WishlistController {
     ) {
 
         Long userId = authorizationUtil.getUserId(authentication);
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         return ResponseEntity.ok(
                 wishlistService.isInWishlist(userId, productId)
