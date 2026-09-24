@@ -1,5 +1,6 @@
 package com.tarun.nest.repository;
 
+import com.tarun.nest.entity.Role;
 import com.tarun.nest.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,4 +11,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
+    
+    long countByRole(Role role);
 }

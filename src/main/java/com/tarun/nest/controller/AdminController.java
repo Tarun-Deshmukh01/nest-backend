@@ -1,6 +1,7 @@
 package com.tarun.nest.controller;
 
 import com.tarun.nest.dto.AdminDashboardResponse;
+import com.tarun.nest.dto.AdminDashboardStatsResponse;
 import com.tarun.nest.dto.ApiResponse;
 import com.tarun.nest.dto.VendorResponse;
 import com.tarun.nest.service.AdminDashboardService;
@@ -46,6 +47,27 @@ public class AdminController {
                         HttpStatus.OK.value(),
                         "Admin dashboard retrieved successfully",
                         dashboard
+                )
+        );
+    }
+
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<ApiResponse> getDashboardStats(
+            Authentication authentication) {
+
+        log.info(
+                "Fetching admin dashboard stats for: {}",
+                authentication.getName()
+        );
+
+        AdminDashboardStatsResponse stats =
+                adminDashboardService.getDashboardStats();
+
+        return ResponseEntity.ok(
+                new ApiResponse(
+                        HttpStatus.OK.value(),
+                        "Admin dashboard stats retrieved successfully",
+                        stats
                 )
         );
     }
