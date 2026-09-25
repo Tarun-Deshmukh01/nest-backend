@@ -1,12 +1,17 @@
 package com.tarun.nest.controller;
 
+import com.tarun.nest.dto.AdminCustomersResponse;
 import com.tarun.nest.dto.AdminDashboardResponse;
 import com.tarun.nest.dto.AdminDashboardStatsResponse;
 import com.tarun.nest.dto.ApiResponse;
+import com.tarun.nest.dto.CustomerResponse;
+import com.tarun.nest.dto.UpdateCustomerStatusRequest;
 import com.tarun.nest.dto.VendorResponse;
+import com.tarun.nest.service.AdminCustomerService;
 import com.tarun.nest.service.AdminDashboardService;
 import com.tarun.nest.service.VendorService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,6 +35,7 @@ public class AdminController {
 
     private final VendorService vendorService;
     private final AdminDashboardService adminDashboardService;
+    private final AdminCustomerService adminCustomerService;
 
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponse> getDashboard(
@@ -172,6 +179,63 @@ public class AdminController {
                         HttpStatus.OK.value(),
                         "All vendors retrieved successfully",
                         vendors
+                )
+        );
+    }
+
+    @GetMapping("/customers")
+    public ResponseEntity<AdminCustomersResponse> getAllCustomers(
+            Authentication authentication) {
+
+        log.info(
+                "Admin {} fetching all customers",
+                authentication.getName()
+        );
+
+        return ResponseEntity.ok(
+                adminCustomerService.getAllCustomers()
+        );
+    }
+
+    @GetMapping("/customers/{customerId}")
+    public ResponseEntity<CustomerResponse> getCustomerById(
+            @PathVariable Long customerId,
+            Authentication authentication) {
+
+        log.info(
+                "Admin {} fetching customer {}",
+                authentication.getName(),
+                customerId
+        );
+
+        return ResponseEntity.ok(
+                adminCustomerService.getCustomerById(customerId)
+        );
+    }
+
+    @PatchMapping("/customers/{customerId}/status")
+    public ResponseEntity<ApiResponse> updateCustomerStatus(
+            @PathVariable Long customerId,
+            @Valid @RequestBody UpdateCustomerStatusRequest request,
+            Authentication authentication) {
+
+        log.info(
+                "Admin {} updating status of customer {} to active={}",
+                authentication.getName(),
+                customerId,
+                request.getActive()
+        );
+
+        adminCustomerService.updateCustomerStatus(
+                customerId,
+                request.getActive()
+        );
+
+        return ResponseEntity.ok(
+                new ApiResponse(
+                        HttpStatus.OK.value(),
+                        "Customer status updated successfully",
+                        null
                 )
         );
     }
