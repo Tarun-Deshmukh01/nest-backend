@@ -49,6 +49,14 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(CustomerNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCustomerNotFound(
+            CustomerNotFoundException ex,
+            HttpServletRequest request) {
+
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
 //    @ExceptionHandler(InvalidSecurityCodeException.class)
 //    public ResponseEntity<ErrorResponse> handleSecurity(
 //            InvalidSecurityCodeException ex,
