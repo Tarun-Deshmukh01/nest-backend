@@ -2,10 +2,13 @@ package com.tarun.nest.service.impl;
 
 import com.tarun.nest.dto.PaymentRequest;
 import com.tarun.nest.dto.PaymentResponse;
+import com.tarun.nest.entity.Cart;
 import com.tarun.nest.entity.Order;
 import com.tarun.nest.entity.Payment;
 import com.tarun.nest.enums.OrderStatus;
 import com.tarun.nest.enums.PaymentStatus;
+import com.tarun.nest.repository.CartItemRepository;
+import com.tarun.nest.repository.CartRepository;
 import com.tarun.nest.repository.OrderRepository;
 import com.tarun.nest.repository.PaymentRepository;
 import com.tarun.nest.service.PaymentService;
@@ -23,6 +26,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
 
     @Override
     @Transactional
@@ -72,7 +78,8 @@ public class PaymentServiceImpl implements PaymentService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        Payment savedPayment = paymentRepository.save(payment);
+        Payment savedPayment =
+                paymentRepository.save(payment);
 
         // 7. Update order after successful payment
         order.setStatus(OrderStatus.CONFIRMED);
@@ -80,7 +87,22 @@ public class PaymentServiceImpl implements PaymentService {
 
         orderRepository.save(order);
 
-        // 8. Return response
+        // 8. Payment is successful.
+        //    Now remove the products from the customer's cart.
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElse(null);
+
+        if (cart != null &&
+                cart.getItems() != null &&
+                !cart.getItems().isEmpty()) {
+
+            cartItemRepository.deleteAll(cart.getItems());
+
+            // Keep the in-memory cart object in sync
+            cart.getItems().clear();
+        }
+
+        // 9. Return payment response
         return PaymentResponse.builder()
                 .paymentId(savedPayment.getId())
                 .orderId(savedPayment.getOrderId())
