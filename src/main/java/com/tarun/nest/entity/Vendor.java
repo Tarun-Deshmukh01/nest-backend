@@ -39,7 +39,7 @@ public class Vendor {
 
     private String status;
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 }

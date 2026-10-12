@@ -3,6 +3,8 @@ package com.tarun.nest.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.time.LocalDateTime;
 
 @Entity
@@ -10,7 +12,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = {"password", "vendor"})
+@ToString(exclude = {"password", "vendors"})
 @EqualsAndHashCode(of = {"id", "email"})
 public class User {
 
@@ -37,8 +39,14 @@ public class User {
     @Column(nullable = false)
     private Boolean active = true;
 
-    @OneToOne(mappedBy = "user")
-    private Vendor vendor;
+    @OneToMany(mappedBy = "user")
+    @OrderBy("id DESC")
+    private List<Vendor> vendors = new ArrayList<>();
+
+    @Transient
+    public Vendor getVendor() {
+        return vendors.isEmpty() ? null : vendors.get(0);
+    }
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

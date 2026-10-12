@@ -110,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
         if (user.getRole() == Role.VENDOR) {
 
             Vendor vendor = vendorRepository
-                    .findByUserId(user.getId())
+                    .findFirstByUserIdOrderByIdDesc(user.getId())
                     .orElse(null);
 
             if (vendor != null) {

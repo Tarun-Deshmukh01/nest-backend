@@ -5,6 +5,7 @@ import com.tarun.nest.dto.VendorResponse;
 import com.tarun.nest.entity.User;
 import com.tarun.nest.entity.Vendor;
 import com.tarun.nest.repository.VendorRepository;
+import com.tarun.nest.service.RealtimeNotificationService;
 import com.tarun.nest.service.VendorService;
 
 import lombok.RequiredArgsConstructor;
@@ -12,20 +13,34 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class VendorServiceImpl implements VendorService {
 
     private final VendorRepository vendorRepository;
+    private final RealtimeNotificationService notificationService;
 
     @Override
+    @Transactional
     public VendorResponse applyForApproval(
             VendorRequest request,
             User user
     ) {
 
-        Vendor vendor = new Vendor();
+        List<Vendor> pendingRequests = vendorRepository
+                .findByUserIdAndStatusOrderByIdDesc(user.getId(), "PENDING");
+        Vendor vendor = pendingRequests.isEmpty()
+                ? new Vendor()
+                : pendingRequests.get(0);
+
+        if (pendingRequests.size() > 1) {
+            List<Vendor> supersededRequests = pendingRequests.subList(1, pendingRequests.size());
+            supersededRequests.forEach(requestToSupersede ->
+                    requestToSupersede.setStatus("SUPERSEDED"));
+            vendorRepository.saveAll(supersededRequests);
+        }
 
         // Company details
         vendor.setCompanyname(
@@ -85,6 +100,13 @@ public class VendorServiceImpl implements VendorService {
         vendor.setUser(user);
 
         Vendor savedVendor = vendorRepository.save(vendor);
+
+        notificationService.sendNotificationToAdmins(
+                "vendor-request-" + savedVendor.getId(),
+                "New vendor request received",
+                "Vendor " + user.getName() + " submitted a registration request.",
+                "/admin/vendor-requests"
+        );
 
         return mapToResponse(savedVendor);
     }
