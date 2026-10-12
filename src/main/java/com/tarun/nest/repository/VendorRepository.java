@@ -12,5 +12,7 @@ public interface VendorRepository extends JpaRepository<Vendor, Long> {
 
     long countByStatus(String status);
 
-    Optional<Vendor> findByUserId(Long userId);
+    Optional<Vendor> findFirstByUserIdOrderByIdDesc(Long userId);
+
+    List<Vendor> findByUserIdAndStatusOrderByIdDesc(Long userId, String status);
 }

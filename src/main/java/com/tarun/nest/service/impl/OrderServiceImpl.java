@@ -14,6 +14,7 @@ import com.tarun.nest.repository.CartRepository;
 import com.tarun.nest.repository.OrderRepository;
 import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.service.OrderService;
+import com.tarun.nest.service.RealtimeNotificationService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final CartRepository cartRepository;
+    private final RealtimeNotificationService notificationService;
 
     @Override
     @Transactional
@@ -97,6 +99,22 @@ public class OrderServiceImpl implements OrderService {
         order.setItems(orderItems);
 
         Order savedOrder = orderRepository.save(order);
+
+        java.util.Set<Long> vendorUserIds = savedOrder.getItems().stream()
+                .map(item -> item.getProduct().getVendor())
+                .filter(java.util.Objects::nonNull)
+                .map(User::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (!vendorUserIds.isEmpty()) {
+            notificationService.sendNotificationToUsers(
+                    vendorUserIds,
+                    "New customer order",
+                    "A customer placed a new order for your products.",
+                    "/vendor/orders"
+            );
+        }
 
         List<OrderItemResponse> itemResponses =
                 new ArrayList<>();
