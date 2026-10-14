@@ -12,7 +12,10 @@ import com.tarun.nest.service.RealtimeNotificationService;
 import com.tarun.nest.service.VendorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
@@ -20,9 +23,16 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.allowed-origins=https://nest-frontend-blue.vercel.app,http://localhost:5173")
+@AutoConfigureMockMvc
 class NestBackendApplicationTests {
+
+	@Autowired
+	private MockMvc mockMvc;
 
 	@Autowired
 	private VendorService vendorService;
@@ -41,6 +51,21 @@ class NestBackendApplicationTests {
 
 	@Test
 	void contextLoads() {
+	}
+
+	@Test
+	void corsPreflightAllowsConfiguredOriginsBeforeAuthentication() throws Exception {
+		assertPreflightAllowed("https://nest-frontend-blue.vercel.app");
+		assertPreflightAllowed("http://localhost:5173");
+	}
+
+	private void assertPreflightAllowed(String origin) throws Exception {
+		mockMvc.perform(options("/api/notifications")
+				.header(HttpHeaders.ORIGIN, origin)
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization"))
+			.andExpect(status().isOk())
+			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin));
 	}
 
 	@Test
