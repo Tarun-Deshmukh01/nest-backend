@@ -2,10 +2,9 @@ package com.tarun.nest.websocket;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tarun.nest.dto.RealtimeNotification;
-import com.tarun.nest.dto.VendorResponse;
+import com.tarun.nest.entity.User;
+import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.service.RealtimeNotificationService;
-import com.tarun.nest.service.VendorService;
 import com.tarun.nest.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +24,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final JwtUtil jwtUtil;
     private final RealtimeNotificationService notificationService;
-    private final VendorService vendorService;
+    private final UserRepository userRepository;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -34,30 +33,40 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        JsonNode payload = objectMapper.readTree(message.getPayload());
+        JsonNode payload;
+        try {
+            payload = objectMapper.readTree(message.getPayload());
+        } catch (Exception exception) {
+            session.close(UNAUTHORIZED);
+            return;
+        }
+
+        if (Boolean.TRUE.equals(session.getAttributes().get("authenticated"))) {
+            session.close(UNAUTHORIZED);
+            return;
+        }
 
         if (!"authenticate".equals(payload.path("type").asText())) {
-            closeIfUnauthenticated(session);
+            session.close(UNAUTHORIZED);
             return;
         }
 
         String token = payload.path("token").asText(null);
-        Long requestedUserId = parseUserId(payload.path("userId").asText(null));
-        String requestedRole = payload.path("role").asText(null);
-
-        if (!isValidAuthentication(token, requestedUserId, requestedRole)) {
+        User authenticatedUser = resolveAuthenticatedUser(token);
+        if (authenticatedUser == null) {
             session.close(UNAUTHORIZED);
             return;
         }
 
         session.getAttributes().put("authenticated", true);
-        session.getAttributes().put("userId", requestedUserId);
-        session.getAttributes().put("role", requestedRole);
+        session.getAttributes().put("userId", authenticatedUser.getId());
+        session.getAttributes().put("role", authenticatedUser.getRole().name());
 
-        notificationService.registerSession(requestedUserId, session);
-
-        if ("ADMIN".equalsIgnoreCase(normalizeRole(requestedRole))) {
-            sendPendingVendorRequests(session);
+        notificationService.registerSession(authenticatedUser.getId(), session);
+        try {
+            notificationService.replayUnreadNotifications(authenticatedUser.getId(), session);
+        } catch (RuntimeException exception) {
+            log.warn("Unable to replay notifications for authenticated user {}", authenticatedUser.getId(), exception);
         }
     }
 
@@ -71,24 +80,21 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         notificationService.unregisterSession(session);
     }
 
-    private boolean isValidAuthentication(String token, Long requestedUserId, String requestedRole) {
-        if (token == null || requestedUserId == null || requestedRole == null) {
-            return false;
-        }
-
-        if (!jwtUtil.isTokenValid(token)) {
-            return false;
+    private User resolveAuthenticatedUser(String token) {
+        if (token == null || !jwtUtil.isTokenValid(token)) {
+            return null;
         }
 
         Long tokenUserId = jwtUtil.extractUserId(token);
-        String tokenRole = jwtUtil.extractRole(token);
+        String tokenRole = normalizeRole(jwtUtil.extractRole(token));
+        if (tokenUserId == null || tokenRole == null) {
+            return null;
+        }
 
-        String normalizedRequestedRole = normalizeRole(requestedRole);
-        String normalizedTokenRole = normalizeRole(tokenRole);
-
-        return requestedUserId.equals(tokenUserId)
-                && normalizedRequestedRole != null
-                && normalizedRequestedRole.equalsIgnoreCase(normalizedTokenRole);
+        return userRepository.findById(tokenUserId)
+                .filter(user -> Boolean.TRUE.equals(user.getActive()))
+                .filter(user -> user.getRole() != null && user.getRole().name().equalsIgnoreCase(tokenRole))
+                .orElse(null);
     }
 
     private String normalizeRole(String role) {
@@ -104,44 +110,4 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         return normalized;
     }
 
-    private void sendPendingVendorRequests(WebSocketSession session) {
-        try {
-            for (VendorResponse vendor : vendorService.getPendingVendors()) {
-                String companyName = vendor.getCompanyDetail() == null
-                        ? "Vendor"
-                        : vendor.getCompanyDetail().getCompanyname();
-                if (companyName == null || companyName.isBlank()) {
-                    companyName = "Vendor";
-                }
-
-                notificationService.sendNotification(session, new RealtimeNotification(
-                        "vendor-request-" + vendor.getId(),
-                        "New vendor request received",
-                        companyName + " submitted a registration request.",
-                        java.time.Instant.now().toString(),
-                        "/admin/vendor-requests"
-                ));
-            }
-        } catch (RuntimeException exception) {
-            log.warn("Unable to replay pending vendor requests to admin websocket session", exception);
-        }
-    }
-
-    private Long parseUserId(String userId) {
-        if (userId == null || userId.isBlank()) {
-            return null;
-        }
-
-        try {
-            return Long.valueOf(userId);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    private void closeIfUnauthenticated(WebSocketSession session) throws Exception {
-        if (!Boolean.TRUE.equals(session.getAttributes().get("authenticated"))) {
-            session.close(UNAUTHORIZED);
-        }
-    }
 }

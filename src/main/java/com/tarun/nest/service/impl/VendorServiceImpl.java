@@ -101,12 +101,7 @@ public class VendorServiceImpl implements VendorService {
 
         Vendor savedVendor = vendorRepository.save(vendor);
 
-        notificationService.sendNotificationToAdmins(
-                "vendor-request-" + savedVendor.getId(),
-                "New vendor request received",
-                "Vendor " + user.getName() + " submitted a registration request.",
-                "/admin/vendor-requests"
-        );
+        notificationService.notifyAdminsOfVendorApplication(savedVendor.getId(), user.getName());
 
         return mapToResponse(savedVendor);
     }
