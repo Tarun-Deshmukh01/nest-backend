@@ -1,38 +1,47 @@
 package com.tarun.nest.controller;
 
-import com.tarun.nest.dto.PaymentRequest;
-import com.tarun.nest.dto.PaymentResponse;
+import com.tarun.nest.dto.*;
 import com.tarun.nest.service.PaymentService;
-import com.tarun.nest.util.AuthorizationUtil;
+
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/payments")
-@RequiredArgsConstructor
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final AuthorizationUtil authorizationUtil;
 
-    @PostMapping
-    public ResponseEntity<PaymentResponse> processPayment(
-            @Valid @RequestBody PaymentRequest request,
+    public PaymentController(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+
+    @PostMapping("/orders")
+    public ResponseEntity<CreatePaymentResponse> createOrder(
+            @Valid @RequestBody CreatePaymentRequest request,
             Authentication authentication
-    ) {
+    ) throws Exception {
 
-        Long userId =
-                authorizationUtil.getUserId(authentication);
+        String customerEmail = authentication.getName();
 
-        PaymentResponse response =
-                paymentService.processPayment(request, userId);
+        return ResponseEntity.ok(
+            paymentService.createOrder(request, customerEmail)
+        );
+    }
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+    @PostMapping("/verify")
+    public ResponseEntity<PaymentVerificationResponse> verifyPayment(
+            @Valid @RequestBody VerifyPaymentRequest request,
+            Authentication authentication
+    ) throws Exception {
+
+        String customerEmail = authentication.getName();
+
+        return ResponseEntity.ok(
+            paymentService.verifyPayment(request, customerEmail)
+        );
     }
 }
