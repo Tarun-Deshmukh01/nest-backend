@@ -28,7 +28,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = "app.allowed-origins=https://nest-frontend-blue.vercel.app,http://localhost:5173")
+@SpringBootTest(properties = {
+		"app.allowed-origins=https://nest-frontend-blue.vercel.app,http://localhost:5173",
+		"razorpay.key-id=rzp_test_ci_placeholder",
+		"razorpay.key-secret=ci-placeholder-secret"
+})
 @AutoConfigureMockMvc
 class NestBackendApplicationTests {
 

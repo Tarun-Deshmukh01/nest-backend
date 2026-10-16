@@ -1,12 +1,19 @@
 package com.tarun.nest.service;
 
-import com.tarun.nest.dto.PaymentRequest;
-import com.tarun.nest.dto.PaymentResponse;
+import com.tarun.nest.dto.CreatePaymentRequest;
+import com.tarun.nest.dto.CreatePaymentResponse;
+import com.tarun.nest.dto.PaymentVerificationResponse;
+import com.tarun.nest.dto.VerifyPaymentRequest;
 
 public interface PaymentService {
 
-    PaymentResponse processPayment(
-            PaymentRequest request,
-            Long userId
-    );
+    CreatePaymentResponse createOrder(
+            CreatePaymentRequest request,
+            String customerEmail
+    ) throws Exception;
+
+    PaymentVerificationResponse verifyPayment(
+            VerifyPaymentRequest request,
+            String customerEmail
+    ) throws Exception;
 }
