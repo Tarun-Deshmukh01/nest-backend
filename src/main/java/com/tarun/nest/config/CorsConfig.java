@@ -13,7 +13,7 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${app.allowed-origins:https://nest-frontend-blue.vercel.app}")
+    @Value("${app.allowed-origins:https://nest-frontend-blue.vercel.app,http://localhost:5173}")
     private String allowedOrigins;
     
     @Bean
@@ -24,7 +24,7 @@ public class CorsConfig {
                 .filter(origin -> !origin.isEmpty())
                 .toList());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setMaxAge(3600L);
         configuration.setAllowCredentials(false);
