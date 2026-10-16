@@ -11,8 +11,8 @@ public class RazorpayConfig {
 
     @Bean
     public RazorpayClient razorpayClient(
-            @Value("${razorpay.key-id}") String keyId,
-            @Value("${razorpay.key-secret}") String keySecret
+            @Value("${razorpay.key-id:rzp_test_placeholder}") String keyId,
+            @Value("${razorpay.key-secret:placeholder_secret}") String keySecret
     ) throws RazorpayException {
         return new RazorpayClient(keyId, keySecret);
     }

@@ -40,8 +40,8 @@ public class PaymentServiceImpl implements PaymentService {
             RazorpayClient razorpayClient,
             PaymentOrderRepository paymentRepository,
             ProductRepository productRepository,
-            @Value("${razorpay.key-id}") String keyId,
-            @Value("${razorpay.key-secret}") String keySecret
+            @Value("${razorpay.key-id:rzp_test_placeholder}") String keyId,
+            @Value("${razorpay.key-secret:placeholder_secret}") String keySecret
     ) {
         this.razorpayClient = razorpayClient;
         this.paymentRepository = paymentRepository;
