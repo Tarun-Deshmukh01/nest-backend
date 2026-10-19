@@ -29,6 +29,24 @@ public class User {
     @Column(nullable = false)
     private String mobileNumber;
 
+    @Column(length = 50)
+    private String addressLabel;
+
+    @Column(length = 255)
+    private String address;
+
+    @Column(length = 100)
+    private String city;
+
+    @Column(length = 100)
+    private String state;
+
+    @Column(length = 20)
+    private String pincode;
+
+    @Column(length = 100)
+    private String country;
+
     @Column(nullable = false)
     private String password;
 
@@ -46,6 +64,14 @@ public class User {
     @Transient
     public Vendor getVendor() {
         return vendors.isEmpty() ? null : vendors.get(0);
+    }
+
+    @Transient
+    public boolean hasSavedAddress() {
+        return address != null && !address.isBlank()
+                && city != null && !city.isBlank()
+                && pincode != null && !pincode.isBlank()
+                && country != null && !country.isBlank();
     }
 
     @Column(nullable = false, updatable = false)

@@ -9,10 +9,14 @@ import com.tarun.nest.dto.CreatePaymentRequest;
 import com.tarun.nest.dto.CreatePaymentResponse;
 import com.tarun.nest.dto.PaymentVerificationResponse;
 import com.tarun.nest.dto.VerifyPaymentRequest;
+import com.tarun.nest.entity.CustomerAddress;
 import com.tarun.nest.entity.PaymentOrder;
 import com.tarun.nest.entity.Product;
+import com.tarun.nest.entity.User;
+import com.tarun.nest.repository.CustomerAddressRepository;
 import com.tarun.nest.repository.PaymentOrderRepository;
 import com.tarun.nest.repository.ProductRepository;
+import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.service.PaymentService;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +37,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final RazorpayClient razorpayClient;
     private final PaymentOrderRepository paymentRepository;
     private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+    private final CustomerAddressRepository addressRepository;
     private final String keyId;
     private final String keySecret;
 
@@ -40,12 +46,16 @@ public class PaymentServiceImpl implements PaymentService {
             RazorpayClient razorpayClient,
             PaymentOrderRepository paymentRepository,
             ProductRepository productRepository,
+            UserRepository userRepository,
+            CustomerAddressRepository addressRepository,
             @Value("${razorpay.key-id:rzp_test_placeholder}") String keyId,
             @Value("${razorpay.key-secret:placeholder_secret}") String keySecret
     ) {
         this.razorpayClient = razorpayClient;
         this.paymentRepository = paymentRepository;
         this.productRepository = productRepository;
+        this.userRepository = userRepository;
+        this.addressRepository = addressRepository;
         this.keyId = keyId;
         this.keySecret = keySecret;
     }
@@ -56,6 +66,14 @@ public class PaymentServiceImpl implements PaymentService {
             CreatePaymentRequest request,
             String customerEmail
     ) throws Exception {
+        User customer = userRepository.findByEmailForUpdate(customerEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Customer not found"
+                ));
+        CustomerAddress deliveryAddress = resolveDeliveryAddress(
+                request, customer
+        );
+
         Product product = productRepository.findById(request.productId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Product not found"
@@ -86,6 +104,7 @@ public class PaymentServiceImpl implements PaymentService {
         paymentOrder.setCustomerEmail(customerEmail);
         paymentOrder.setProductId(product.getId());
         paymentOrder.setQuantity(request.quantity());
+        paymentOrder.setDeliveryAddress(deliveryAddress);
         paymentOrder.setAmountPaise(amountPaise);
         paymentOrder = paymentRepository.saveAndFlush(paymentOrder);
 
@@ -125,6 +144,57 @@ public class PaymentServiceImpl implements PaymentService {
                 keyId,
                 product.getName()
         );
+    }
+
+    private CustomerAddress resolveDeliveryAddress(
+            CreatePaymentRequest request,
+            User customer) {
+        if (request.addressId() != null && request.deliveryAddress() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Provide either addressId or deliveryAddress, not both"
+            );
+        }
+
+        if (request.deliveryAddress() != null) {
+            if (addressRepository.countByCustomerId(customer.getId()) >= 5) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "A customer can save at most five addresses"
+                );
+            }
+
+            CustomerAddress address = new CustomerAddress();
+            address.setCustomer(customer);
+            address.setLabel(trimToNull(request.deliveryAddress().label()));
+            address.setAddress(request.deliveryAddress().address().trim());
+            address.setCity(request.deliveryAddress().city().trim());
+            address.setState(trimToNull(request.deliveryAddress().state()));
+            address.setPincode(request.deliveryAddress().pincode().trim());
+            address.setCountry(request.deliveryAddress().country().trim());
+            return addressRepository.saveAndFlush(address);
+        }
+
+        if (request.addressId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Provide a saved addressId or a deliveryAddress"
+            );
+        }
+
+        return addressRepository
+                .findByIdAndCustomerId(request.addressId(), customer.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Select a valid delivery address before starting payment"
+                ));
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     @Override

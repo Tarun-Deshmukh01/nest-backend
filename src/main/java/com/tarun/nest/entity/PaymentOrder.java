@@ -25,6 +25,10 @@ public class PaymentOrder {
     @Column(nullable = false)
     private Integer quantity;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delivery_address_id")
+    private CustomerAddress deliveryAddress;
+
     // Always store money in the smallest currency unit (paise).
     @Column(nullable = false)
     private Long amountPaise;
@@ -71,6 +75,10 @@ public class PaymentOrder {
     public void setProductId(Long value) { productId = value; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer value) { quantity = value; }
+    public CustomerAddress getDeliveryAddress() { return deliveryAddress; }
+    public void setDeliveryAddress(CustomerAddress value) {
+        deliveryAddress = value;
+    }
     public Long getAmountPaise() { return amountPaise; }
     public void setAmountPaise(Long value) { amountPaise = value; }
     public String getCurrency() { return currency; }
