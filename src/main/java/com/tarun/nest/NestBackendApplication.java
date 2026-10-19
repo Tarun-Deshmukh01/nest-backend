@@ -2,11 +2,12 @@
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-  import org.springframework.boot.CommandLineRunner;
-  import org.springframework.context.annotation.Bean;
-  import org.springframework.core.env.Environment;
-  import org.slf4j.Logger;
-  import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @SpringBootApplication
 public class NestBackendApplication {
@@ -25,6 +26,21 @@ public class NestBackendApplication {
             String user = env.getProperty("spring.datasource.username");
             logger.info("Resolved spring.datasource.url={}", url);
             logger.info("Resolved spring.datasource.username={}", user);
+        };
+    }
+
+    @Bean
+    public CommandLineRunner allowOrderLevelPaymentAttempts(
+            JdbcTemplate jdbcTemplate) {
+        return args -> {
+            jdbcTemplate.execute("""
+                    ALTER TABLE payment_orders
+                        ALTER COLUMN product_id DROP NOT NULL,
+                        ALTER COLUMN quantity DROP NOT NULL
+                    """);
+            logger.info(
+                    "Ensured payment_orders supports order-level payment attempts"
+            );
         };
     }
 
