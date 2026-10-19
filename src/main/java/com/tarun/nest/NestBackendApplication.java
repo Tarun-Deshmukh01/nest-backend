@@ -30,16 +30,64 @@ public class NestBackendApplication {
     }
 
     @Bean
-    public CommandLineRunner allowOrderLevelPaymentAttempts(
+    public CommandLineRunner ensurePaymentOrderSchema(
             JdbcTemplate jdbcTemplate) {
         return args -> {
-            jdbcTemplate.execute("""
-                    ALTER TABLE payment_orders
-                        ALTER COLUMN product_id DROP NOT NULL,
-                        ALTER COLUMN quantity DROP NOT NULL
-                    """);
+            boolean productIdNullable = Boolean.TRUE.equals(
+                    jdbcTemplate.queryForObject("""
+                            SELECT NOT attnotnull
+                            FROM pg_attribute
+                            WHERE attrelid = 'payment_orders'::regclass
+                              AND attname = 'product_id'
+                              AND NOT attisdropped
+                            """, Boolean.class)
+            );
+            boolean quantityNullable = Boolean.TRUE.equals(
+                    jdbcTemplate.queryForObject("""
+                            SELECT NOT attnotnull
+                            FROM pg_attribute
+                            WHERE attrelid = 'payment_orders'::regclass
+                              AND attname = 'quantity'
+                              AND NOT attisdropped
+                            """, Boolean.class)
+            );
+            if (!productIdNullable || !quantityNullable) {
+                jdbcTemplate.execute("""
+                        ALTER TABLE payment_orders
+                            ALTER COLUMN product_id DROP NOT NULL,
+                            ALTER COLUMN quantity DROP NOT NULL
+                        """);
+            }
+
+            boolean allowsCreating = Boolean.TRUE.equals(
+                    jdbcTemplate.queryForObject("""
+                            SELECT EXISTS (
+                                SELECT 1
+                                FROM pg_constraint
+                                WHERE conrelid = 'payment_orders'::regclass
+                                  AND conname = 'payment_orders_status_check'
+                                  AND pg_get_constraintdef(oid) LIKE '%CREATING%'
+                            )
+                            """, Boolean.class)
+            );
+            if (!allowsCreating) {
+                jdbcTemplate.execute("""
+                        ALTER TABLE payment_orders
+                            DROP CONSTRAINT IF EXISTS payment_orders_status_check
+                        """);
+                jdbcTemplate.execute("""
+                        ALTER TABLE payment_orders
+                            ADD CONSTRAINT payment_orders_status_check
+                            CHECK (
+                                status IN (
+                                    'CREATING', 'CREATED', 'VERIFIED',
+                                    'PAID', 'FAILED'
+                                )
+                            )
+                        """);
+            }
             logger.info(
-                    "Ensured payment_orders supports order-level payment attempts"
+                    "Ensured payment_orders supports order-level payment attempts and CREATING status"
             );
         };
     }
