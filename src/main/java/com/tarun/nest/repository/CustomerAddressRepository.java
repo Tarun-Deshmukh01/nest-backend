@@ -9,11 +9,17 @@ import java.util.Optional;
 public interface CustomerAddressRepository
         extends JpaRepository<CustomerAddress, Long> {
 
-    List<CustomerAddress> findByCustomerIdOrderByIdAsc(Long customerId);
+    List<CustomerAddress> findByCustomerIdOrderByDefaultAddressDescIdAsc(
+            Long customerId
+    );
 
     long countByCustomerId(Long customerId);
+
+    List<CustomerAddress> findByCustomerIdAndDefaultAddressTrue(Long customerId);
 
     Optional<CustomerAddress> findByIdAndCustomerId(
             Long id, Long customerId
     );
+
+    long deleteByIdAndCustomerId(Long id, Long customerId);
 }

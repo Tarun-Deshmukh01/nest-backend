@@ -1,6 +1,6 @@
 package com.tarun.nest.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,18 +8,6 @@ import lombok.Setter;
 @Setter
 public class CreateOrderRequest {
 
-    @NotBlank
-    private String address;
-
-    @NotBlank
-    private String city;
-
-    @NotBlank
-    private String state;
-
-    @NotBlank
-    private String pincode;
-
-    @NotBlank
-    private String country;
+    @NotNull
+    private Long addressId;
 }

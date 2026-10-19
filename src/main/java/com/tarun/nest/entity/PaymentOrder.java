@@ -19,10 +19,14 @@ public class PaymentOrder {
     @Column(nullable = false)
     private String customerEmail;
 
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id")
+    private Order order;
+
+    @Column
     private Long productId;
 
-    @Column(nullable = false)
+    @Column
     private Integer quantity;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -51,6 +55,7 @@ public class PaymentOrder {
     private LocalDateTime updatedAt;
 
     public enum PaymentStatus {
+        CREATING,
         CREATED,
         VERIFIED,
         PAID,
@@ -71,6 +76,8 @@ public class PaymentOrder {
     public Long getId() { return id; }
     public String getCustomerEmail() { return customerEmail; }
     public void setCustomerEmail(String value) { customerEmail = value; }
+    public Order getOrder() { return order; }
+    public void setOrder(Order value) { order = value; }
     public Long getProductId() { return productId; }
     public void setProductId(Long value) { productId = value; }
     public Integer getQuantity() { return quantity; }

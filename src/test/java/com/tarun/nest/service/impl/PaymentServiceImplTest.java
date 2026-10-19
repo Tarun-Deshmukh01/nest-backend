@@ -2,10 +2,15 @@ package com.tarun.nest.service.impl;
 
 import com.razorpay.OrderClient;
 import com.razorpay.Order;
+import com.razorpay.Payment;
+import com.razorpay.PaymentClient;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
+import com.razorpay.Utils;
 import com.tarun.nest.dto.CustomerAddressRequest;
 import com.tarun.nest.dto.CreatePaymentRequest;
+import com.tarun.nest.dto.CreatePaymentResponse;
+import com.tarun.nest.dto.VerifyPaymentRequest;
 import com.tarun.nest.entity.CustomerAddress;
 import com.tarun.nest.entity.PaymentOrder;
 import com.tarun.nest.entity.Product;
@@ -14,6 +19,11 @@ import com.tarun.nest.repository.CustomerAddressRepository;
 import com.tarun.nest.repository.PaymentOrderRepository;
 import com.tarun.nest.repository.ProductRepository;
 import com.tarun.nest.repository.UserRepository;
+import com.tarun.nest.repository.OrderRepository;
+import com.tarun.nest.repository.CartItemRepository;
+import com.tarun.nest.repository.CartRepository;
+import com.tarun.nest.service.RealtimeNotificationService;
+import com.tarun.nest.service.OrderPaymentPreparationService;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +53,9 @@ class PaymentServiceImplTest {
     private OrderClient orderClient;
 
     @Mock
+    private PaymentClient paymentClient;
+
+    @Mock
     private PaymentOrderRepository paymentRepository;
 
     @Mock
@@ -54,19 +67,41 @@ class PaymentServiceImplTest {
     @Mock
     private CustomerAddressRepository addressRepository;
 
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private RealtimeNotificationService notificationService;
+
+    @Mock
+    private CartRepository cartRepository;
+
+    @Mock
+    private CartItemRepository cartItemRepository;
+
+    @Mock
+    private OrderPaymentPreparationService orderPaymentPreparationService;
+
     private PaymentServiceImpl paymentService;
 
     @BeforeEach
     void setUp() {
         razorpayClient.orders = orderClient;
+        razorpayClient.payments = paymentClient;
         paymentService = new PaymentServiceImpl(
                 razorpayClient,
                 paymentRepository,
                 productRepository,
                 userRepository,
                 addressRepository,
+                orderRepository,
+                notificationService,
+                cartRepository,
+                cartItemRepository,
+                orderPaymentPreparationService,
                 "rzp_test_key",
-                "test_secret"
+                "test_secret",
+                "webhook_test_secret"
         );
     }
 
@@ -161,11 +196,16 @@ class PaymentServiceImplTest {
                         null,
                         new CustomerAddressRequest(
                                 " Work ",
+                                null,
+                                null,
                                 " 8 Main Street ",
+                                null,
+                                null,
                                 " Pune ",
                                 " Maharashtra ",
                                 " 411001 ",
-                                " India "
+                                " India ",
+                                false
                         )
                 ),
                 "payment-test@example.test"
@@ -183,5 +223,83 @@ class PaymentServiceImplTest {
                 org.mockito.ArgumentCaptor.forClass(PaymentOrder.class);
         verify(paymentRepository).saveAndFlush(orderCaptor.capture());
         assertEquals(savedAddress, orderCaptor.getValue().getDeliveryAddress());
+    }
+
+    @Test
+    void reusesExistingProviderOrderOnPaymentRetry() throws Exception {
+        when(orderPaymentPreparationService.prepare(
+                22L, "payment-test@example.test"
+        )).thenReturn(new OrderPaymentPreparationService.PreparedOrderPayment(
+                33L, "razorpay_order_existing", 2500L, "INR",
+                "NEST-ORDER", false
+        ));
+
+        CreatePaymentResponse response = paymentService.createPaymentForOrder(
+                22L, "payment-test@example.test"
+        );
+
+        assertEquals("razorpay_order_existing", response.razorpayOrderId());
+        assertEquals(2500L, response.amount());
+        verify(orderClient, never()).create(any(JSONObject.class));
+    }
+
+    @Test
+    void createsProviderOrderAfterPersistingPaymentAttempt() throws Exception {
+        when(orderPaymentPreparationService.prepare(
+                22L, "payment-test@example.test"
+        )).thenReturn(new OrderPaymentPreparationService.PreparedOrderPayment(
+                33L, null, 2500L, "INR", "NEST-ORDER", true
+        ));
+        Order razorpayOrder = org.mockito.Mockito.mock(Order.class);
+        when(orderClient.create(any(JSONObject.class))).thenReturn(razorpayOrder);
+        when(razorpayOrder.get("id")).thenReturn("razorpay_order_new");
+
+        CreatePaymentResponse response = paymentService.createPaymentForOrder(
+                22L, "payment-test@example.test"
+        );
+
+        assertEquals("razorpay_order_new", response.razorpayOrderId());
+        verify(orderPaymentPreparationService)
+                .markCreated(33L, "razorpay_order_new");
+    }
+
+    @Test
+    void verifiesCapturedPaymentAndTreatsDuplicateCallbackIdempotently()
+            throws Exception {
+        PaymentOrder internalOrder = new PaymentOrder();
+        internalOrder.setCustomerEmail("payment-test@example.test");
+        internalOrder.setAmountPaise(100L);
+        internalOrder.setRazorpayOrderId("razorpay_order_1");
+        Payment providerPayment = org.mockito.Mockito.mock(Payment.class);
+        when(paymentRepository.findByIdAndCustomerEmailForUpdate(
+                44L, "payment-test@example.test"
+        )).thenReturn(Optional.of(internalOrder));
+        when(paymentClient.fetch("razorpay_payment_1"))
+                .thenReturn(providerPayment);
+        when(providerPayment.get("order_id")).thenReturn("razorpay_order_1");
+        when(providerPayment.get("amount")).thenReturn(100L);
+        when(providerPayment.get("currency")).thenReturn("INR");
+        when(providerPayment.get("status")).thenReturn("captured");
+        String signature = Utils.getHash(
+                "razorpay_order_1|razorpay_payment_1", "test_secret"
+        );
+        VerifyPaymentRequest request = new VerifyPaymentRequest(
+                44L,
+                "razorpay_order_1",
+                "razorpay_payment_1",
+                signature
+        );
+
+        var firstResponse = paymentService.verifyPayment(
+                request, "payment-test@example.test"
+        );
+        var duplicateResponse = paymentService.verifyPayment(
+                request, "payment-test@example.test"
+        );
+
+        assertEquals("PAID", firstResponse.status());
+        assertEquals("PAID", duplicateResponse.status());
+        assertEquals(PaymentOrder.PaymentStatus.PAID, internalOrder.getStatus());
+        verify(paymentClient).fetch("razorpay_payment_1");
     }
 }

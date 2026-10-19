@@ -31,4 +31,19 @@ public class OrderItem {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
+
+    @Column(name = "product_name_snapshot", length = 255)
+    private String productNameSnapshot;
+
+    @Column(name = "product_image_snapshot", length = 1000)
+    private String productImageSnapshot;
+
+    @Column(name = "vendor_user_id_snapshot")
+    private Long vendorUserIdSnapshot;
+
+    @Column(name = "vendor_name_snapshot", length = 255)
+    private String vendorNameSnapshot;
+
+    @Column(name = "line_total", precision = 12, scale = 2)
+    private BigDecimal lineTotal;
 }

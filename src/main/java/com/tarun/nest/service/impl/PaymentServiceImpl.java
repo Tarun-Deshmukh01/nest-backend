@@ -10,14 +10,22 @@ import com.tarun.nest.dto.CreatePaymentResponse;
 import com.tarun.nest.dto.PaymentVerificationResponse;
 import com.tarun.nest.dto.VerifyPaymentRequest;
 import com.tarun.nest.entity.CustomerAddress;
+import com.tarun.nest.entity.OrderItem;
 import com.tarun.nest.entity.PaymentOrder;
 import com.tarun.nest.entity.Product;
 import com.tarun.nest.entity.User;
 import com.tarun.nest.repository.CustomerAddressRepository;
+import com.tarun.nest.repository.CartItemRepository;
+import com.tarun.nest.repository.CartRepository;
+import com.tarun.nest.repository.OrderRepository;
 import com.tarun.nest.repository.PaymentOrderRepository;
 import com.tarun.nest.repository.ProductRepository;
 import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.service.PaymentService;
+import com.tarun.nest.service.OrderPaymentPreparationService;
+import com.tarun.nest.service.RealtimeNotificationService;
+import com.tarun.nest.enums.OrderPaymentStatus;
+import com.tarun.nest.enums.OrderStatus;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -28,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -39,8 +48,14 @@ public class PaymentServiceImpl implements PaymentService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final CustomerAddressRepository addressRepository;
+    private final OrderRepository orderRepository;
+    private final RealtimeNotificationService notificationService;
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+    private final OrderPaymentPreparationService orderPaymentPreparationService;
     private final String keyId;
     private final String keySecret;
+    private final String webhookSecret;
 
     public PaymentServiceImpl(
             RazorpayClient razorpayClient,
@@ -48,16 +63,28 @@ public class PaymentServiceImpl implements PaymentService {
             ProductRepository productRepository,
             UserRepository userRepository,
             CustomerAddressRepository addressRepository,
+            OrderRepository orderRepository,
+            RealtimeNotificationService notificationService,
+            CartRepository cartRepository,
+            CartItemRepository cartItemRepository,
+            OrderPaymentPreparationService orderPaymentPreparationService,
             @Value("${razorpay.key-id:rzp_test_placeholder}") String keyId,
-            @Value("${razorpay.key-secret:placeholder_secret}") String keySecret
+            @Value("${razorpay.key-secret:placeholder_secret}") String keySecret,
+            @Value("${razorpay.webhook-secret:}") String webhookSecret
     ) {
         this.razorpayClient = razorpayClient;
         this.paymentRepository = paymentRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
+        this.orderRepository = orderRepository;
+        this.notificationService = notificationService;
+        this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.orderPaymentPreparationService = orderPaymentPreparationService;
         this.keyId = keyId;
         this.keySecret = keySecret;
+        this.webhookSecret = webhookSecret;
     }
 
     @Override
@@ -146,6 +173,67 @@ public class PaymentServiceImpl implements PaymentService {
         );
     }
 
+    @Override
+    public CreatePaymentResponse createPaymentForOrder(
+            Long orderId,
+            String customerEmail) throws Exception {
+        OrderPaymentPreparationService.PreparedOrderPayment prepared =
+                orderPaymentPreparationService.prepare(orderId, customerEmail);
+        if (!prepared.createProviderOrder()) {
+            return paymentResponse(prepared);
+        }
+
+        JSONObject options = new JSONObject();
+        options.put("amount", prepared.amountPaise());
+        options.put("currency", prepared.currency());
+        options.put(
+                "receipt",
+                "nest_" + prepared.internalOrderId()
+        );
+        try {
+            Order razorpayOrder = razorpayClient.orders.create(options);
+            String razorpayOrderId = razorpayOrder.get("id");
+            orderPaymentPreparationService.markCreated(
+                    prepared.internalOrderId(), razorpayOrderId
+            );
+            return new CreatePaymentResponse(
+                    prepared.internalOrderId(),
+                    razorpayOrderId,
+                    prepared.amountPaise(),
+                    prepared.currency(),
+                    keyId,
+                    prepared.orderNumber()
+            );
+        } catch (RazorpayException exception) {
+            orderPaymentPreparationService.markFailed(
+                    prepared.internalOrderId()
+            );
+            log.error(
+                    "Razorpay order creation failed for application order {} (provider code {})",
+                    orderId,
+                    exception.getCode(),
+                    exception
+            );
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Payment gateway could not create the payment order",
+                    exception
+            );
+        }
+    }
+
+    private CreatePaymentResponse paymentResponse(
+            OrderPaymentPreparationService.PreparedOrderPayment paymentOrder) {
+        return new CreatePaymentResponse(
+                paymentOrder.internalOrderId(),
+                paymentOrder.razorpayOrderId(),
+                paymentOrder.amountPaise(),
+                paymentOrder.currency(),
+                keyId,
+                paymentOrder.orderNumber()
+        );
+    }
+
     private CustomerAddress resolveDeliveryAddress(
             CreatePaymentRequest request,
             User customer) {
@@ -167,11 +255,34 @@ public class PaymentServiceImpl implements PaymentService {
             CustomerAddress address = new CustomerAddress();
             address.setCustomer(customer);
             address.setLabel(trimToNull(request.deliveryAddress().label()));
+            address.setRecipientName(
+                    trimToNull(request.deliveryAddress().recipientName()));
+            address.setPhoneNumber(
+                    trimToNull(request.deliveryAddress().phoneNumber()));
             address.setAddress(request.deliveryAddress().address().trim());
+            address.setAddressLine2(
+                    trimToNull(request.deliveryAddress().addressLine2()));
+            address.setLandmark(
+                    trimToNull(request.deliveryAddress().landmark()));
             address.setCity(request.deliveryAddress().city().trim());
             address.setState(trimToNull(request.deliveryAddress().state()));
             address.setPincode(request.deliveryAddress().pincode().trim());
             address.setCountry(request.deliveryAddress().country().trim());
+            address.setDefaultAddress(
+                    addressRepository.countByCustomerId(customer.getId()) == 0
+                            || Boolean.TRUE.equals(
+                                    request.deliveryAddress().defaultAddress())
+            );
+            if (address.isDefaultAddress()) {
+                List<CustomerAddress> existingDefaults =
+                        addressRepository.findByCustomerIdAndDefaultAddressTrue(
+                                customer.getId()
+                        );
+                existingDefaults.forEach(existing ->
+                        existing.setDefaultAddress(false)
+                );
+                addressRepository.saveAll(existingDefaults);
+            }
             return addressRepository.saveAndFlush(address);
         }
 
@@ -203,7 +314,7 @@ public class PaymentServiceImpl implements PaymentService {
             VerifyPaymentRequest request,
             String customerEmail
     ) throws Exception {
-        PaymentOrder savedOrder = paymentRepository.findByIdAndCustomerEmail(
+        PaymentOrder savedOrder = paymentRepository.findByIdAndCustomerEmailForUpdate(
                         request.internalOrderId(), customerEmail
                 )
                 .orElseThrow(() -> new ResponseStatusException(
@@ -296,6 +407,7 @@ public class PaymentServiceImpl implements PaymentService {
         if ("captured".equals(status)) {
             savedOrder.setStatus(PaymentOrder.PaymentStatus.PAID);
             paymentRepository.save(savedOrder);
+            confirmApplicationOrder(savedOrder);
             return new PaymentVerificationResponse(
                     true, "PAID", "Payment verified successfully"
             );
@@ -310,9 +422,182 @@ public class PaymentServiceImpl implements PaymentService {
             );
         }
 
+        if ("failed".equals(status)) {
+            savedOrder.setStatus(PaymentOrder.PaymentStatus.FAILED);
+            paymentRepository.save(savedOrder);
+            markPaymentFailed(savedOrder);
+            return new PaymentVerificationResponse(
+                    false, "FAILED", "Payment failed; the order remains available for payment retry"
+            );
+        }
+
         paymentRepository.save(savedOrder);
         return new PaymentVerificationResponse(
                 false, status, "Payment is not captured"
         );
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void handleWebhook(String payload, String signature) throws Exception {
+        if (webhookSecret.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Payment webhook secret is not configured"
+            );
+        }
+        boolean signatureValid;
+        try {
+            signatureValid = Utils.verifyWebhookSignature(
+                    payload, signature, webhookSecret
+            );
+        } catch (RazorpayException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid webhook signature", exception
+            );
+        }
+        if (!signatureValid) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid webhook signature"
+            );
+        }
+
+        JSONObject event = new JSONObject(payload);
+        String eventName = event.optString("event");
+        if (!"payment.captured".equals(eventName)
+                && !"payment.failed".equals(eventName)) {
+            return;
+        }
+        JSONObject paymentEntity = event.getJSONObject("payload")
+                .getJSONObject("payment")
+                .getJSONObject("entity");
+        String providerOrderId = paymentEntity.getString("order_id");
+        String providerPaymentId = paymentEntity.getString("id");
+        PaymentOrder savedOrder = paymentRepository
+                .findByRazorpayOrderIdForUpdate(providerOrderId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Payment order not found"
+                ));
+        if (savedOrder.getStatus() == PaymentOrder.PaymentStatus.PAID) {
+            if (providerPaymentId.equals(savedOrder.getRazorpayPaymentId())) {
+                return;
+            }
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Payment order was already completed with another payment"
+            );
+        }
+        Payment providerPayment;
+        try {
+            providerPayment = razorpayClient.payments.fetch(providerPaymentId);
+        } catch (RazorpayException exception) {
+            log.error(
+                    "Razorpay webhook payment lookup failed for internal order {} (provider code {})",
+                    savedOrder.getId(),
+                    exception.getCode(),
+                    exception
+            );
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Payment gateway could not verify the webhook payment",
+                    exception
+            );
+        }
+        if (!providerOrderId.equals(providerPayment.get("order_id"))
+                || ((Number) providerPayment.get("amount")).longValue()
+                        != savedOrder.getAmountPaise()
+                || !savedOrder.getCurrency().equals(
+                        providerPayment.get("currency"))) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Webhook payment details mismatch"
+            );
+        }
+
+        savedOrder.setRazorpayPaymentId(providerPaymentId);
+        if ("payment.captured".equals(eventName)
+                && "captured".equals(providerPayment.get("status"))) {
+            savedOrder.setStatus(PaymentOrder.PaymentStatus.PAID);
+            paymentRepository.save(savedOrder);
+            confirmApplicationOrder(savedOrder);
+            return;
+        }
+        if ("payment.failed".equals(eventName)
+                && "failed".equals(providerPayment.get("status"))) {
+            savedOrder.setStatus(PaymentOrder.PaymentStatus.FAILED);
+            paymentRepository.save(savedOrder);
+            markPaymentFailed(savedOrder);
+        }
+    }
+
+    private void confirmApplicationOrder(PaymentOrder paymentOrder) {
+        if (paymentOrder.getOrder() == null) {
+            return;
+        }
+        com.tarun.nest.entity.Order order = orderRepository.findById(
+                        paymentOrder.getOrder().getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Application order not found"
+                ));
+        if (order.getPaymentStatus() == OrderPaymentStatus.PAID) {
+            return;
+        }
+        order.setPaymentStatus(OrderPaymentStatus.PAID);
+        order.setStatus(OrderStatus.CONFIRMED);
+        orderRepository.save(order);
+        cartRepository.findByUserId(order.getUser().getId()).ifPresent(cart ->
+                order.getItems().forEach(orderItem ->
+                        cartItemRepository.findByCartIdAndProductId(
+                                cart.getId(), orderItem.getProduct().getId()
+                        ).ifPresent(cartItem -> {
+                            int remainingQuantity = cartItem.getQuantity()
+                                    - orderItem.getQuantity();
+                            if (remainingQuantity > 0) {
+                                cartItem.setQuantity(remainingQuantity);
+                                cartItemRepository.save(cartItem);
+                            } else {
+                                cartItemRepository.delete(cartItem);
+                            }
+                        })
+                )
+        );
+        List<Long> vendorIds = order.getItems().stream()
+                .map(OrderItem::getVendorUserIdSnapshot)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        notificationService.sendNotificationToUsers(
+                vendorIds,
+                "New paid order",
+                "Order " + order.getOrderNumber() + " is ready for fulfillment.",
+                "/vendor/orders"
+        );
+        notificationService.sendNotificationToUsers(
+                List.of(order.getUser().getId()),
+                "Order confirmed",
+                "Your order " + order.getOrderNumber() + " has been confirmed.",
+                "/orders"
+        );
+    }
+
+    private void markPaymentFailed(PaymentOrder paymentOrder) {
+        if (paymentOrder.getOrder() == null) {
+            return;
+        }
+        PaymentOrder latestAttempt = paymentRepository
+                .findFirstByOrderIdOrderByIdDesc(paymentOrder.getOrder().getId())
+                .orElse(paymentOrder);
+        if (!latestAttempt.getId().equals(paymentOrder.getId())) {
+            return;
+        }
+        com.tarun.nest.entity.Order order = orderRepository.findById(
+                        paymentOrder.getOrder().getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Application order not found"
+                ));
+        if (order.getPaymentStatus() == OrderPaymentStatus.PAID) {
+            return;
+        }
+        order.setPaymentStatus(OrderPaymentStatus.FAILED);
+        orderRepository.save(order);
     }
 }

@@ -40,6 +40,7 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api/payments/webhook",
                                 "/ws/notifications",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
@@ -54,6 +55,9 @@ public class SecurityConfig {
 
                         // USER endpoints
                         .requestMatchers("/api/user/**")
+                        .hasRole("CUSTOMER")
+
+                        .requestMatchers("/api/addresses/**")
                         .hasRole("CUSTOMER")
 
                         .requestMatchers("/api/orders/**")

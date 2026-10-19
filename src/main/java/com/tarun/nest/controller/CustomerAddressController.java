@@ -11,7 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/user/address")
+@RequestMapping({"/api/user/address", "/api/addresses"})
 @RequiredArgsConstructor
 public class CustomerAddressController {
 
@@ -46,5 +46,13 @@ public class CustomerAddressController {
                         addressId, request, authentication.getName()
                 )
         );
+    }
+
+    @DeleteMapping("/{addressId}")
+    public ResponseEntity<Void> deleteAddress(
+            @PathVariable Long addressId,
+            Authentication authentication) {
+        customerAddressService.deleteAddress(addressId, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }

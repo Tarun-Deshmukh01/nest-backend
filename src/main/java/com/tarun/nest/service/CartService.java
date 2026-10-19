@@ -1,21 +1,23 @@
 package com.tarun.nest.service;
 
-import com.tarun.nest.dto.AddToCartRequest;
-import com.tarun.nest.entity.Cart;
-import com.tarun.nest.entity.CartItem;
-import com.tarun.nest.entity.Product;
-import com.tarun.nest.entity.ProductStatus;
-import com.tarun.nest.entity.User;
-import com.tarun.nest.repository.CartItemRepository;
-import com.tarun.nest.repository.CartRepository;
-import com.tarun.nest.repository.ProductRepository;
-import com.tarun.nest.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
+
+import com.tarun.nest.dto.AddToCartRequest;
+import com.tarun.nest.entity.Cart;
+import com.tarun.nest.entity.CartItem;
+import com.tarun.nest.entity.Product;
+import com.tarun.nest.entity.ProductStatus;
+import com.tarun.nest.entity.Role;
+import com.tarun.nest.entity.User;
+import com.tarun.nest.repository.CartItemRepository;
+import com.tarun.nest.repository.CartRepository;
+import com.tarun.nest.repository.ProductRepository;
+import com.tarun.nest.repository.UserRepository;
 
 import java.util.List;
 
@@ -41,7 +43,7 @@ public class CartService {
                 );
 
         // Only customers can add products
-        if (user.getRole() != com.tarun.nest.entity.Role.CUSTOMER) {
+        if (user.getRole() != Role.CUSTOMER) {
             throw new RuntimeException(
                     "Only customers can add products to cart"
             );

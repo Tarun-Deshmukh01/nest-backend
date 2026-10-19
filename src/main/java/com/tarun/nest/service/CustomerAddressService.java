@@ -19,4 +19,6 @@ public interface CustomerAddressService {
             CustomerAddressRequest request,
             String customerEmail
     );
+
+    void deleteAddress(Long addressId, String customerEmail);
 }

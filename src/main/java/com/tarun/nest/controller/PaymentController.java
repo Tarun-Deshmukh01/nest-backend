@@ -44,4 +44,13 @@ public class PaymentController {
             paymentService.verifyPayment(request, customerEmail)
         );
     }
+
+    @PostMapping("/webhook")
+    public ResponseEntity<Void> webhook(
+            @RequestBody String payload,
+            @RequestHeader("X-Razorpay-Signature") String signature
+    ) throws Exception {
+        paymentService.handleWebhook(payload, signature);
+        return ResponseEntity.noContent().build();
+    }
 }

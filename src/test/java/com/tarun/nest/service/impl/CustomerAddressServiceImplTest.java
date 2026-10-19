@@ -5,6 +5,7 @@ import com.tarun.nest.dto.CustomerAddressResponse;
 import com.tarun.nest.entity.CustomerAddress;
 import com.tarun.nest.entity.User;
 import com.tarun.nest.repository.CustomerAddressRepository;
+import com.tarun.nest.repository.PaymentOrderRepository;
 import com.tarun.nest.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ class CustomerAddressServiceImplTest {
     @Mock
     private CustomerAddressRepository addressRepository;
 
+    @Mock
+    private PaymentOrderRepository paymentOrderRepository;
+
     @Test
     void createsAddressOnExistingCustomerAndTrimsInput() {
         User customer = new User();
@@ -38,32 +42,43 @@ class CustomerAddressServiceImplTest {
         customer.setEmail("address-test@example.test");
         when(userRepository.findByEmailForUpdate(customer.getEmail()))
                 .thenReturn(Optional.of(customer));
-        when(addressRepository.findByCustomerIdOrderByIdAsc(10L))
+        when(addressRepository.findByCustomerIdOrderByDefaultAddressDescIdAsc(10L))
                 .thenReturn(List.of());
         when(addressRepository.countByCustomerId(10L)).thenReturn(0L);
         when(addressRepository.save(any(CustomerAddress.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         CustomerAddressServiceImpl service =
-                new CustomerAddressServiceImpl(userRepository, addressRepository);
+                new CustomerAddressServiceImpl(
+                        userRepository, addressRepository, paymentOrderRepository);
         CustomerAddressResponse response = service.createAddress(
                 new CustomerAddressRequest(
                         " Home ",
+                        " Recipient ",
+                        " 9876543210 ",
                         " 12 Market Road ",
+                        " Flat 3 ",
+                        " Near Park ",
                         " Mumbai ",
                         " Maharashtra ",
                         " 400001 ",
-                        " India "
+                        " India ",
+                        true
                 ),
                 customer.getEmail()
         );
 
         assertEquals("Home", response.label());
+        assertEquals("Recipient", response.recipientName());
+        assertEquals("9876543210", response.phoneNumber());
         assertEquals("12 Market Road", response.address());
+        assertEquals("Flat 3", response.addressLine2());
+        assertEquals("Near Park", response.landmark());
         assertEquals("Mumbai", response.city());
         assertEquals("Maharashtra", response.state());
         assertEquals("400001", response.pincode());
         assertEquals("India", response.country());
+        org.junit.jupiter.api.Assertions.assertTrue(response.defaultAddress());
         verify(addressRepository).save(any(CustomerAddress.class));
     }
 
@@ -79,11 +94,12 @@ class CustomerAddressServiceImplTest {
         address.setCity("Mumbai");
         address.setPincode("400001");
         address.setCountry("India");
-        when(addressRepository.findByCustomerIdOrderByIdAsc(10L))
+        when(addressRepository.findByCustomerIdOrderByDefaultAddressDescIdAsc(10L))
                 .thenReturn(List.of(address));
 
         CustomerAddressServiceImpl service =
-                new CustomerAddressServiceImpl(userRepository, addressRepository);
+                new CustomerAddressServiceImpl(
+                        userRepository, addressRepository, paymentOrderRepository);
 
         List<CustomerAddressResponse> response =
                 service.getAddresses("address-test@example.test");
@@ -98,19 +114,21 @@ class CustomerAddressServiceImplTest {
         customer.setId(10L);
         when(userRepository.findByEmailForUpdate("address-test@example.test"))
                 .thenReturn(Optional.of(customer));
-        when(addressRepository.findByCustomerIdOrderByIdAsc(10L))
+        when(addressRepository.findByCustomerIdOrderByDefaultAddressDescIdAsc(10L))
                 .thenReturn(List.of());
         when(addressRepository.countByCustomerId(10L)).thenReturn(5L);
 
         CustomerAddressServiceImpl service =
-                new CustomerAddressServiceImpl(userRepository, addressRepository);
+                new CustomerAddressServiceImpl(
+                        userRepository, addressRepository, paymentOrderRepository);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
                 () -> service.createAddress(
                         new CustomerAddressRequest(
-                                "Home", "12 Market Road", "Mumbai",
-                                "Maharashtra", "400001", "India"
+                                "Home", null, null, "12 Market Road",
+                                null, null, "Mumbai", "Maharashtra",
+                                "400001", "India", true
                         ),
                         "address-test@example.test"
                 )
