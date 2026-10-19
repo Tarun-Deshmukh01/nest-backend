@@ -68,13 +68,15 @@ class NestBackendApplicationTests {
 		mockMvc.perform(options("/api/notifications")
 				.header(HttpHeaders.ORIGIN, origin)
 				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
-				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization,content-type"))
+				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS,
+						"authorization,content-type,idempotency-key"))
 			.andExpect(status().isOk())
 			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin))
 			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("GET")))
 			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("OPTIONS")))
 			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, containsString("authorization")))
-			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, containsString("content-type")));
+			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, containsString("content-type")))
+			.andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, containsString("idempotency-key")));
 	}
 
 	@Test

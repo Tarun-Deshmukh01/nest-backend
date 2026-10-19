@@ -12,8 +12,15 @@ public interface PaymentService {
             String customerEmail
     ) throws Exception;
 
+    CreatePaymentResponse createPaymentForOrder(
+            Long orderId,
+            String customerEmail
+    ) throws Exception;
+
     PaymentVerificationResponse verifyPayment(
             VerifyPaymentRequest request,
             String customerEmail
     ) throws Exception;
+
+    void handleWebhook(String payload, String signature) throws Exception;
 }

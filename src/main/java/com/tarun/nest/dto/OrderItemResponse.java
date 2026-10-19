@@ -13,6 +13,12 @@ public class OrderItemResponse {
 
     private String productName;
 
+    private String productImage;
+
+    private Long vendorId;
+
+    private String vendorName;
+
     private Integer quantity;
 
     private BigDecimal price;
