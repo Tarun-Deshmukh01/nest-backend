@@ -32,6 +32,17 @@ public class PaymentController {
         );
     }
 
+    @PostMapping("/cart")
+    public ResponseEntity<CreatePaymentResponse> createCartPayment(
+            @Valid @RequestBody CreateOrderRequest request,
+            Authentication authentication,
+            @RequestHeader("Idempotency-Key") String idempotencyKey
+    ) throws Exception {
+        return ResponseEntity.ok(paymentService.createCartPayment(
+                request, authentication.getName(), idempotencyKey
+        ));
+    }
+
     @PostMapping("/verify")
     public ResponseEntity<PaymentVerificationResponse> verifyPayment(
             @Valid @RequestBody VerifyPaymentRequest request,
