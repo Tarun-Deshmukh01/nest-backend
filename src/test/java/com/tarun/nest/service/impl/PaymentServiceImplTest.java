@@ -20,10 +20,12 @@ import com.tarun.nest.repository.PaymentOrderRepository;
 import com.tarun.nest.repository.ProductRepository;
 import com.tarun.nest.repository.UserRepository;
 import com.tarun.nest.repository.OrderRepository;
+import com.tarun.nest.repository.VendorOrderFulfillmentRepository;
 import com.tarun.nest.repository.CartItemRepository;
 import com.tarun.nest.repository.CartRepository;
 import com.tarun.nest.service.RealtimeNotificationService;
 import com.tarun.nest.service.OrderPaymentPreparationService;
+import com.tarun.nest.service.OrderService;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +73,9 @@ class PaymentServiceImplTest {
     private OrderRepository orderRepository;
 
     @Mock
+    private VendorOrderFulfillmentRepository fulfillmentRepository;
+
+    @Mock
     private RealtimeNotificationService notificationService;
 
     @Mock
@@ -81,6 +86,9 @@ class PaymentServiceImplTest {
 
     @Mock
     private OrderPaymentPreparationService orderPaymentPreparationService;
+
+    @Mock
+    private OrderService orderService;
 
     private PaymentServiceImpl paymentService;
 
@@ -95,10 +103,12 @@ class PaymentServiceImplTest {
                 userRepository,
                 addressRepository,
                 orderRepository,
+                fulfillmentRepository,
                 notificationService,
                 cartRepository,
                 cartItemRepository,
                 orderPaymentPreparationService,
+                orderService,
                 "rzp_test_key",
                 "test_secret",
                 "webhook_test_secret"
