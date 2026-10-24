@@ -6,6 +6,7 @@ import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
 import com.tarun.nest.dto.CreatePaymentRequest;
+import com.tarun.nest.dto.CreateOrderRequest;
 import com.tarun.nest.dto.CreatePaymentResponse;
 import com.tarun.nest.dto.PaymentVerificationResponse;
 import com.tarun.nest.dto.VerifyPaymentRequest;
@@ -14,6 +15,7 @@ import com.tarun.nest.entity.OrderItem;
 import com.tarun.nest.entity.PaymentOrder;
 import com.tarun.nest.entity.Product;
 import com.tarun.nest.entity.User;
+import com.tarun.nest.entity.VendorOrderFulfillment;
 import com.tarun.nest.repository.CustomerAddressRepository;
 import com.tarun.nest.repository.CartItemRepository;
 import com.tarun.nest.repository.CartRepository;
@@ -21,8 +23,10 @@ import com.tarun.nest.repository.OrderRepository;
 import com.tarun.nest.repository.PaymentOrderRepository;
 import com.tarun.nest.repository.ProductRepository;
 import com.tarun.nest.repository.UserRepository;
+import com.tarun.nest.repository.VendorOrderFulfillmentRepository;
 import com.tarun.nest.service.PaymentService;
 import com.tarun.nest.service.OrderPaymentPreparationService;
+import com.tarun.nest.service.OrderService;
 import com.tarun.nest.service.RealtimeNotificationService;
 import com.tarun.nest.enums.OrderPaymentStatus;
 import com.tarun.nest.enums.OrderStatus;
@@ -36,7 +40,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -49,10 +55,12 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserRepository userRepository;
     private final CustomerAddressRepository addressRepository;
     private final OrderRepository orderRepository;
+    private final VendorOrderFulfillmentRepository fulfillmentRepository;
     private final RealtimeNotificationService notificationService;
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final OrderPaymentPreparationService orderPaymentPreparationService;
+    private final OrderService orderService;
     private final String keyId;
     private final String keySecret;
     private final String webhookSecret;
@@ -64,10 +72,12 @@ public class PaymentServiceImpl implements PaymentService {
             UserRepository userRepository,
             CustomerAddressRepository addressRepository,
             OrderRepository orderRepository,
+            VendorOrderFulfillmentRepository fulfillmentRepository,
             RealtimeNotificationService notificationService,
             CartRepository cartRepository,
             CartItemRepository cartItemRepository,
             OrderPaymentPreparationService orderPaymentPreparationService,
+            OrderService orderService,
             @Value("${razorpay.key-id:rzp_test_placeholder}") String keyId,
             @Value("${razorpay.key-secret:placeholder_secret}") String keySecret,
             @Value("${razorpay.webhook-secret:}") String webhookSecret
@@ -78,13 +88,30 @@ public class PaymentServiceImpl implements PaymentService {
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
         this.orderRepository = orderRepository;
+        this.fulfillmentRepository = fulfillmentRepository;
         this.notificationService = notificationService;
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.orderPaymentPreparationService = orderPaymentPreparationService;
+        this.orderService = orderService;
         this.keyId = keyId;
         this.keySecret = keySecret;
         this.webhookSecret = webhookSecret;
+    }
+
+    @Override
+    public CreatePaymentResponse createCartPayment(
+            CreateOrderRequest request,
+            String customerEmail,
+            String idempotencyKey) throws Exception {
+        User customer = userRepository.findByEmail(customerEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Customer not found"
+                ));
+        com.tarun.nest.dto.OrderResponse order = orderService.createOrder(
+                request, customer.getId(), idempotencyKey
+        );
+        return createPaymentForOrder(order.getOrderId(), customerEmail);
     }
 
     @Override
@@ -121,6 +148,28 @@ public class PaymentServiceImpl implements PaymentService {
             );
         }
 
+        product = productRepository.findByIdForUpdate(product.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Product not found"
+                ));
+        if (product.getStatus() != com.tarun.nest.entity.ProductStatus.PUBLISHED
+                || product.getStock() == null
+                || product.getStock() < request.quantity()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Product is unavailable or out of stock"
+            );
+        }
+        unitPrice = product.getPrice();
+        if (unitPrice == null || unitPrice.signum() <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Product price is unavailable"
+            );
+        }
+
+        com.tarun.nest.entity.Order applicationOrder = createSingleProductOrder(
+                customer, deliveryAddress, product, request.quantity()
+        );
+
         long amountPaise = unitPrice
                 .multiply(BigDecimal.valueOf(request.quantity()))
                 .multiply(BigDecimal.valueOf(100))
@@ -129,6 +178,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         PaymentOrder paymentOrder = new PaymentOrder();
         paymentOrder.setCustomerEmail(customerEmail);
+        paymentOrder.setOrder(applicationOrder);
         paymentOrder.setProductId(product.getId());
         paymentOrder.setQuantity(request.quantity());
         paymentOrder.setDeliveryAddress(deliveryAddress);
@@ -171,6 +221,57 @@ public class PaymentServiceImpl implements PaymentService {
                 keyId,
                 product.getName()
         );
+    }
+
+    private com.tarun.nest.entity.Order createSingleProductOrder(
+            User customer,
+            CustomerAddress address,
+            Product product,
+            int quantity) {
+        BigDecimal lineTotal = product.getPrice().multiply(
+                BigDecimal.valueOf(quantity));
+        com.tarun.nest.entity.Order order = com.tarun.nest.entity.Order.builder()
+                .user(customer)
+                .orderNumber("NEST-" + UUID.randomUUID().toString()
+                        .replace("-", "").substring(0, 16).toUpperCase())
+                .status(OrderStatus.PENDING_PAYMENT)
+                .paymentStatus(OrderPaymentStatus.CREATED)
+                .recipientName(address.getRecipientName() == null
+                        ? customer.getName() : address.getRecipientName())
+                .phoneNumber(address.getPhoneNumber() == null
+                        ? customer.getMobileNumber() : address.getPhoneNumber())
+                .address(address.getAddress())
+                .addressLine2(address.getAddressLine2())
+                .landmark(address.getLandmark())
+                .city(address.getCity())
+                .state(address.getState())
+                .pincode(address.getPincode())
+                .country(address.getCountry())
+                .subtotal(lineTotal)
+                .deliveryCharges(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .totalAmount(lineTotal)
+                .build();
+        OrderItem item = OrderItem.builder()
+                .order(order)
+                .product(product)
+                .quantity(quantity)
+                .price(product.getPrice())
+                .productNameSnapshot(product.getName())
+                .productImageSnapshot(product.getImageUrl())
+                .vendorUserIdSnapshot(product.getVendor().getId())
+                .vendorNameSnapshot(product.getVendor().getName())
+                .lineTotal(lineTotal)
+                .build();
+        order.setItems(new java.util.ArrayList<>(List.of(item)));
+        product.setStock(product.getStock() - quantity);
+        com.tarun.nest.entity.Order savedOrder = orderRepository.saveAndFlush(order);
+        VendorOrderFulfillment fulfillment = new VendorOrderFulfillment();
+        fulfillment.setOrder(savedOrder);
+        fulfillment.setVendor(product.getVendor());
+        fulfillment.setStatus(OrderStatus.PENDING_PAYMENT);
+        fulfillmentRepository.save(fulfillment);
+        return savedOrder;
     }
 
     @Override
@@ -560,17 +661,30 @@ public class PaymentServiceImpl implements PaymentService {
                         })
                 )
         );
-        List<Long> vendorIds = order.getItems().stream()
-                .map(OrderItem::getVendorUserIdSnapshot)
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
-        notificationService.sendNotificationToUsers(
-                vendorIds,
-                "New paid order",
-                "Order " + order.getOrderNumber() + " is ready for fulfillment.",
-                "/vendor/orders"
-        );
+        Map<Long, List<String>> productsByVendor = order.getItems().stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        item -> item.getVendorUserIdSnapshot() == null
+                                ? item.getProduct().getVendor().getId()
+                                : item.getVendorUserIdSnapshot(),
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.mapping(
+                                item -> item.getProductNameSnapshot() == null
+                                        ? item.getProduct().getName()
+                                        : item.getProductNameSnapshot(),
+                                java.util.stream.Collectors.toList()
+                        )
+                ));
+        productsByVendor.forEach((vendorId, productNames) -> {
+            String productList = String.join(", ", productNames);
+            notificationService.sendNotificationToUsers(
+                    List.of(vendorId),
+                    "New paid order",
+                    order.getUser().getName() + " ordered " + productList
+                            + " (order " + order.getOrderNumber()
+                            + "). Ready for fulfillment.",
+                    "/vendor/orders"
+            );
+        });
         notificationService.sendNotificationToUsers(
                 List.of(order.getUser().getId()),
                 "Order confirmed",

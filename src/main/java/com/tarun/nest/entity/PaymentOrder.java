@@ -25,7 +25,7 @@ public class PaymentOrder {
 
     @Column
     private Long productId;
-
+    
     @Column
     private Integer quantity;
 
