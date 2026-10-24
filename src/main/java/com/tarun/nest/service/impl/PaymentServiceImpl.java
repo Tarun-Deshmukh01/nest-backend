@@ -128,7 +128,7 @@ public class PaymentServiceImpl implements PaymentService {
                 request, customer
         );
 
-        Product product = productRepository.findById(request.productId())
+        Product product = productRepository.findByIdForUpdate(request.productId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Product not found"
                 ));
@@ -148,10 +148,6 @@ public class PaymentServiceImpl implements PaymentService {
             );
         }
 
-        product = productRepository.findByIdForUpdate(product.getId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Product not found"
-                ));
         if (product.getStatus() != com.tarun.nest.entity.ProductStatus.PUBLISHED
                 || product.getStock() == null
                 || product.getStock() < request.quantity()) {
